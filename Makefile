@@ -5,8 +5,13 @@
 # ============================================================
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
+# TOOLCHAIN_BIN can be passed in from Docker (found dynamically via `find`)
+# Falls back to the standard extracted path if not set.
 TOOLCHAIN_DIR ?= /opt/hisi-linux/x86-arm/arm-hisiv300-linux
-TC_BIN        := $(TOOLCHAIN_DIR)/target/bin
+TC_BIN        ?= $(TOOLCHAIN_DIR)/target/bin
+ifdef TOOLCHAIN_BIN
+TC_BIN        := $(TOOLCHAIN_BIN)
+endif
 # CROSS_PREFIX = bare name only — used by OpenSSL --cross-compile-prefix
 # CROSS        = full path — used to build CC/AR/etc
 CROSS_PREFIX  := arm-hisiv300-linux-
