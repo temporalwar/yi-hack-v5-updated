@@ -1,10 +1,9 @@
-name: Cross-Compile Build
+name: Create Release
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    tags:
+      - 'v*' # Triggers whenever you push a tag like v1.0.3
 
 jobs:
   build:
@@ -15,44 +14,37 @@ jobs:
 
       - name: Setup Build Environment
         run: |
-          # Create working directories in the workspace (no permission issues)
           mkdir -p ${{ github.workspace }}/scripts
           mkdir -p ${{ github.workspace }}/build_dir
           
-          # Download and extract cJSON (based on your logs)
-          wget -q https://github.com/DaveGamble/cJSON/archive/v1.7.18.tar.gz
-          tar -xzf v1.7.18.tar.gz
-          
-          # Create the toolchain file
+          # Create your toolchain file dynamically
           cat <<'EOF' > ${{ github.workspace }}/scripts/hisiv300.cmake
           set(CMAKE_SYSTEM_NAME Linux)
           set(CMAKE_SYSTEM_PROCESSOR arm)
           set(CMAKE_C_COMPILER /opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclibcgnueabi-gcc)
           set(CMAKE_SYSROOT /opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/armv5te_arm9_soft)
-          
           set(CMAKE_FIND_ROOT_PATH ${CMAKE_SYSROOT})
           set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          
-          # Fix for missing crt1.o/crti.o
           set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${CMAKE_SYSROOT}/lib -L${CMAKE_SYSROOT}/usr/lib -Wl,-rpath-link,${CMAKE_SYSROOT}/lib -Wl,-rpath-link,${CMAKE_SYSROOT}/usr/lib")
           EOF
 
-      - name: Build cJSON
+      - name: Build Firmware
         run: |
           cd ${{ github.workspace }}/build_dir
-          
-          # Configure
-          cmake ${{ github.workspace }}/cJSON-1.7.18 \
+          cmake ${{ github.workspace }} \
             -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/scripts/hisiv300.cmake \
-            -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/staging \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DENABLE_CJSON_TEST=OFF \
-            -DENABLE_CJSON_UTILS=OFF \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DBUILD_STATIC_LIBS=ON
-            
-          # Build
+            -DCMAKE_BUILD_TYPE=MinSizeRel
           make VERBOSE=1
-          make install
+          
+          # Package the result (adjust the filename/path as needed for your specific output)
+          tar -czf yi-hack-v5-updated-${{ github.ref_name }}.tar.gz ./bin/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            yi-hack-v5-updated-${{ github.ref_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
