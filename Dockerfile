@@ -1,38 +1,50 @@
-FROM ubuntu:22.04
+FROM ubuntu:18.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ── Host build tools + 32-bit libs for HiSilicon toolchain ────────────────
-# The arm-hisiv300-linux binaries are 32-bit i686 ELFs — need i386 multilib.
+# ── Host build tools ───────────────────────────────────────────────────────
+# Ubuntu 18.04 matches the upstream yi-hack-v5 build environment exactly.
+# 32-bit libs required: toolchain binaries are i686 ELFs.
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl wget ca-certificates git \
-    autoconf automake libtool pkg-config \
-    cmake ninja-build python3 python3-pip \
+    build-essential autoconf automake libtool pkg-config \
+    curl wget ca-certificates git \
+    cmake \
     bzip2 xz-utils unzip file \
     libssl-dev zlib1g-dev \
+    python3 python3-pip \
     libc6:i386 libncurses5:i386 libstdc++6:i386 zlib1g:i386 \
-    && pip3 install meson==1.3.2 \
     && rm -rf /var/lib/apt/lists/*
 
+# ── Pin exact meson/ninja versions from upstream wiki ─────────────────────
+# upstream specifies meson==0.51.1 and ninja==1.9.0 explicitly
+RUN pip3 install 'meson==0.51.1' 'ninja==1.9.0'
+
+# ── Install ninja binary (meson needs it on PATH) ─────────────────────────
+RUN pip3 show ninja && \
+    ln -sf $(python3 -c "import ninja; import os; print(os.path.dirname(ninja.__file__))")/data/bin/ninja /usr/local/bin/ninja || \
+    apt-get install -y ninja-build
+
 # ── Download and extract toolchain ────────────────────────────────────────
-# Confirmed structure: binaries are at bin/ (NOT target/bin/)
+# Confirmed from diagnostic: binaries at bin/, NOT target/bin/
 # Full prefix: arm-hisiv300-linux-uclibcgnueabi-
-# Sysroot: target/usr + target/lib (armv5te_arm9_soft variant)
 RUN mkdir -p /opt/hisi-linux/x86-arm && \
     curl -fL "https://github.com/OpenIPC/toolchains/releases/download/v1/arm-hisiv300-linux.tar.bz2" \
          -o /tmp/tc.tar.bz2 && \
     tar -xjf /tmp/tc.tar.bz2 -C /opt/hisi-linux/x86-arm/ && \
     rm /tmp/tc.tar.bz2
 
-# ── Verify toolchain works ─────────────────────────────────────────────────
 ENV TC_BIN=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin
-ENV SYSROOT=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/armv5te_arm9_soft
 ENV PATH="${TC_BIN}:${PATH}"
 
-RUN echo "=== Toolchain check ===" && \
+# ── Verify toolchain ───────────────────────────────────────────────────────
+RUN echo "=== Toolchain ===" && \
     ${TC_BIN}/arm-hisiv300-linux-uclibcgnueabi-gcc --version && \
-    echo "=== Toolchain OK ==="
+    echo "=== Meson ===" && \
+    meson --version && \
+    echo "=== Ninja ===" && \
+    ninja --version && \
+    echo "=== All OK ==="
 
 WORKDIR /build
 COPY Makefile .
