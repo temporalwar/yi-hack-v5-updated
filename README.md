@@ -1,25 +1,28 @@
-# Yi-Hack-V5 Updated (Modernized Security Stack)
+# Yi-Hack-V5 Updated (Hardened Security Build)
 
-This repository contains a modernized build infrastructure for `yi-hack-v5`, focused on hardening the security stack for embedded IoT camera systems (Hi3518ev200 chipset).
+This repository provides a modernized and secure build for `yi-hack-v5` firmware, specifically targeted for the `Hi3518ev200` chipset. This project focuses on vulnerability patching, logic error correction, and overall system hardening.
 
-## Security Modernization
-This fork addresses critical vulnerabilities and logic flaws found in legacy firmware implementations by updating the core components:
+## Security Improvements
+This build replaces legacy binaries with modern, patched versions to mitigate high-severity CVEs:
 
 * **SSH/SSHd:** Dropbear 2025.89 (Patched CVE-2025-14282)
-* **TLS/Crypto:** OpenSSL 3.3.2 (Patched multiple DoS/Buffer Over-read CVEs)
-* **MQTT:** Mosquitto 2.1.0 (Hardened against DoS attacks)
+* **TLS/Crypto:** OpenSSL 3.3.2 (Mitigated DoS/Buffer over-read vulnerabilities)
+* **MQTT:** Mosquitto 2.1.0 (Hardened packet handling)
 * **Filesystem:** libfuse 3.18.2 (Patched CVE-2026-33150)
-* **Connectivity:** Curl 8.20.0 (Consolidated security patches)
+* **Connectivity:** Curl 8.20.0 (General security consolidation)
 
-## Key Bug Fixes
-* **Shell Scripting:** Resolved path traversal risks, cron overwriting bugs, and incorrect shell variable assignments.
-* **Home Assistant Integration:** Fixed critical logic errors in MQTT advertisement, including missing `CONF_SYSTEM_FILE` and copy-paste errors in QOS settings.
-* **Integrity:** Tightened configuration file access controls and grep anchoring.
+## Critical Bug Fixes
+The shell environment has been stabilized and secured:
 
-## Build Instructions
-Ensure you are using the provided Docker environment to ensure library compatibility:
+* **Logic & Stability:** Fixed shell loop errors in `clean_records.sh` and corrected cron redirection (using `>>` instead of `>`) in `startup.sh`.
+* **Path Traversal Security:** Fixed whitespace errors in CGI variable assignments (`DIR="none"`), restoring path traversal protection.
+* **Configuration Hardening:** Secured `grep` anchoring in configuration checks and aligned default service values (`ONVIF_WSDD=no`).
+* **Home Assistant Integration:** Resolved missing configuration variables (`CONF_SYSTEM_FILE`), corrected telemetry QOS keys, and fixed JSON syntax for sensor templates.
 
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/Temporalwar/yi-hack-v5-updated.git](https://github.com/Temporalwar/yi-hack-v5-updated.git)
-   cd yi-hack-v5-updated
+## Build Requirements
+* Use the provided Docker environment for consistent library compilation.
+* Run `make clean && make` to generate fresh binaries.
+* **Post-Deployment:** Manually harden device config files using `chmod 600 /etc/system.conf`.
+
+---
+*Maintained by: System Hackers Inc.*
