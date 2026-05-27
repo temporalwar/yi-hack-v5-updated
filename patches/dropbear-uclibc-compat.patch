@@ -1,0 +1,34 @@
+--- a/svr-auth.c
++++ b/svr-auth.c
+@@ -1,5 +1,5 @@
+-/* dropbear/svr-auth.c - server-side authentication with privilege dropping */
++/* dropbear/svr-auth.c - server-side auth (uClibc: SVR_DROP_PRIVS disabled) */
+ 
+ #include "includes.h"
+ #include "dbutil.h"
+--- a/sysoptions.h
++++ b/sysoptions.h
+@@ -1,6 +1,12 @@
+ #ifndef SYSOPTIONS_H_
+ #define SYSOPTIONS_H_
+ 
++/* uClibc 0.9.33.2 does not provide setresgid()/setresuid() as libc wrappers;
++ * the kernel syscalls exist but uclibc doesn't expose them as functions.
++ * Disable the privilege-dropping feature that requires them.
++ * CVE-2025-14282 is mitigated separately by disabling unix stream forwarding.
++ */
++#define DROPBEAR_SVR_DROP_PRIVS 0
++
+ /* These are runtime-settable options, set in main() before anything else */
+ 
+ /* This is ugly, but the cleanest way */
+--- a/tcp-accept.c
++++ b/tcp-accept.c
+@@ -1,5 +1,5 @@
+ #include "includes.h"
++#include "dbutil.h"
+ #include "tcp-accept.h"
+-#include "dbutil.h"
+ 
+ /* Disable unix stream socket forwarding on uClibc targets to mitigate
+  * CVE-2025-14282 without requiring setresgid() support.
