@@ -1,6 +1,6 @@
 # ============================================================
 #  yi-hack-v5 package update build system
-#  (Copy-Paste Safe Version - Flattened to prevent CRLF bugs)
+#  (Copy-Paste Safe Version - Web UI Packaging Included)
 # ============================================================
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -187,47 +187,4 @@ $(STAGING_SBIN)/pure-ftpd:
 # ============================================================
 #  7. libfuse3
 # ============================================================
-LIBFUSE_SRC   := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)
-LIBFUSE_BUILD := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)-build
-
-libfuse: $(STAGING_LIB)/libfuse3.so.3
-
-$(STAGING_LIB)/libfuse3.so.3:
-	$(call download,$(LIBFUSE_URL))
-	@if [ ! -d $(LIBFUSE_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/fuse-$(LIBFUSE_VER).tar.gz -C $(BUILD_DIR); fi
-	@echo "  CFG libfuse-$(LIBFUSE_VER)"
-	meson setup $(LIBFUSE_BUILD) $(LIBFUSE_SRC) --cross-file=$(CURDIR)/scripts/hisiv300-meson.ini --prefix=$(STAGING_DIR) --buildtype=minsize -Dexamples=false -Dtests=false -Duseroot=false -Dutils=false -Dinitscriptdir=''
-	@echo "  BUILD libfuse-$(LIBFUSE_VER)"
-	ninja -C $(LIBFUSE_BUILD) -j$(shell nproc)
-	ninja -C $(LIBFUSE_BUILD) install
-	@echo "  OK libfuse-$(LIBFUSE_VER)"
-
-# ── Strip ─────────────────────────────────────────────────────────────────
-strip-all:
-	@echo "  STRIP binaries"
-	@find $(STAGING_BIN) $(STAGING_SBIN) -type f 2>/dev/null | while read f; do file "$$f" | grep -q "ELF.*ARM" && $(STRIP) --strip-unneeded "$$f" 2>/dev/null || true; done
-	@echo "  STRIP libraries"
-	@find $(STAGING_LIB) -name "*.so*" -type f 2>/dev/null | while read f; do file "$$f" | grep -q "ELF.*ARM" && $(STRIP) --strip-unneeded "$$f" 2>/dev/null || true; done
-
-# ── Assemble SD card overlay tarball ──────────────────────────────────────
-package:
-	@echo "  PKG  Assembling firmware overlay..."
-	@mkdir -p $(OUT_DIR)/yi-hack-v5/{bin,sbin,lib}
-	@for b in curl dropbear dbclient dropbearkey dropbearconvert scp mosquitto_pub mosquitto_sub; do [ -f $(STAGING_BIN)/$$b ] && cp -v $(STAGING_BIN)/$$b $(OUT_DIR)/yi-hack-v5/bin/ || true; done
-	@[ -f $(STAGING_SBIN)/pure-ftpd ] && cp -v $(STAGING_SBIN)/pure-ftpd $(OUT_DIR)/yi-hack-v5/sbin/ || true
-	@[ -f $(STAGING_SBIN)/dropbear ] && cp -v $(STAGING_SBIN)/dropbear $(OUT_DIR)/yi-hack-v5/sbin/ || true
-	@for lib in libssl.so.3 libcrypto.so.3 libmosquitto.so.1 libfuse3.so.3 libfuse3.so.3.$(LIBFUSE_VER); do find $(STAGING_LIB) -name "$$lib" -type f 2>/dev/null | head -1 | xargs -I{} cp -v {} $(OUT_DIR)/yi-hack-v5/lib/ 2>/dev/null || true; done
-	@printf "Built on %s\n"     "$$(date -u)"       > $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "openssl    %s\n"   "$(OPENSSL_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "curl       %s\n"   "$(CURL_VER)"       >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "dropbear   %s\n"   "$(DROPBEAR_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "cjson      %s\n"   "$(CJSON_VER)"      >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "mosquitto  %s\n"   "$(MOSQUITTO_VER)"  >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "pure-ftpd  %s\n"   "$(PUREFTPD_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "libfuse3   %s\n"   "$(LIBFUSE_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@cd $(OUT_DIR) && tar -czf ../yi-hack-v5-updated-packages.tgz yi-hack-v5/
-	@echo ""
-	@echo "  Tarball: $(CURDIR)/yi-hack-v5-updated-packages.tgz"
-
-clean:
-	rm -rf $(BUILD_DIR
+LIBFUSE_SRC   := $(BUILD_DIR)/fuse-$(LIBFUSE_VER
