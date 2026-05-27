@@ -1,104 +1,119 @@
-# yi-hack-v5 Package Update Build System
+# yi-hack-v5-updated
 
-Cross-compiles updated versions of all security-sensitive binaries for the
-**Yi Home 1080p** camera running yi-hack-v5 on the **Hi3518ev200** SoC.
+A security-hardened fork of [alienatedsec/yi-hack-v5](https://github.com/alienatedsec/yi-hack-v5) for the **Yi Home 1080p** camera (`Hi3518ev200` chipset). This fork focuses on two things: fixing shell-level bugs in the original firmware scripts, and replacing critically outdated bundled binaries with modern, patched versions.
 
-## What gets built
+Releases are built automatically via GitHub Actions and published as ready-to-deploy tarballs.
 
-| Package    | Old version  | New version | Key reason                          |
-|------------|-------------|-------------|-------------------------------------|
-| OpenSSL    | 1.1.x (EOL) | 3.3.2       | EOL since Sep 2023, many CVEs       |
-| curl       | 7.86.0-DEV  | 8.20.0      | ~3 years of security fixes          |
-| dropbear   | 2018.76     | 2025.89     | CVE-2025-14282 + 7 years of patches |
-| mosquitto  | 1.5.8       | 2.1.0       | Major version, security fixes       |
-| pure-ftpd  | 1.0.47      | 1.0.52      | 5 patch releases                    |
-| libfuse3   | 3.4.2       | 3.18.1      | 14 minor versions                   |
+---
 
-## Requirements
+## Download
 
-- **Linux x86_64 host** (Ubuntu 22.04 LTS recommended)
-- **arm-hisiv300-linux toolchain** (GCC 4.8.3/Linaro, uClibc 0.9.33.2)
-- `make`, `cmake`, `meson`, `ninja`, `wget`
+**[→ Latest release](https://github.com/Temporalwar/yi-hack-v5-updated/releases/latest)**
 
-## Step 1 — Install the toolchain
+Download `yi-hack-v5-updated-packages.tgz` from the release assets.
 
-```bash
-mkdir -p /opt/hisi-linux/x86-arm
-cd /opt/hisi-linux/x86-arm
-curl -fL https://github.com/OpenIPC/toolchains/releases/download/v1/arm-hisiv300-linux.tar.bz2 \
-     -o arm-hisiv300-linux.tar.bz2
-tar -xjf arm-hisiv300-linux.tar.bz2
-rm arm-hisiv300-linux.tar.bz2
-```
+---
 
-Verify it works:
-```bash
-/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/bin/arm-hisiv300-linux-uclibcgnueabi-gcc --version
-# arm-hisiv300-linux-uclibcgnueabi-gcc (Hisilicon_v300) 4.8.3 ...
-```
+## What's fixed
 
-## Step 2 — Install host build tools
+### Shell & CGI bug fixes
 
-```bash
-sudo apt update
-sudo apt install build-essential cmake ninja-build wget bzip2
-pip3 install meson==1.3.2
-```
+Seven bugs found and fixed in the original firmware scripts:
 
-## Step 3 — Build everything
+| File | Bug | Fix |
+|---|---|---|
+| `script/clean_records.sh` | `continue` used outside a loop — script never cleaned records | Changed to `;;` |
+| `script/mqtt_advertise/startup.sh` | All 5 cron entries used `>` (overwrite) — only the last one survived | Changed all to `>>` |
+| `www/cgi-bin/eventsdirdel.sh` | `DIR = "none"` (spaces) — variable never set, path traversal guard broken | Fixed to `DIR="none"` |
+| `www/cgi-bin/eventsfiledel.sh` | Same `FILE = "none"` bug as above | Fixed to `FILE="none"` |
+| `script/mqtt_advertise/mqtt_adv_homeassistant.sh` | `CONF_SYSTEM_FILE` undefined — all `get_system_config` calls silently failed | Added missing variable |
+| `script/mqtt_advertise/mqtt_adv_homeassistant.sh` | `MQTT_ADV_TELEMETRY_QOS` read from `RETAIN` key — QOS always wrong | Fixed key name |
+| `script/check_conf.sh` | `ONVIF_WSDD` default was `yes`, `system.conf` ships it as `no` — enabled on first boot without user consent | Aligned default to `no` |
+| `script/mqtt_advertise/check_conf.sh` | `grep $PAR` without `^` anchor — partial key matches prevented config entries being added | Fixed to `grep ^$PAR=` |
 
-```bash
-chmod +x build.sh
-./build.sh          # builds all packages
-```
+### Updated packages
 
-Or build individually (OpenSSL must be first):
-```bash
-./build.sh openssl
-./build.sh curl
-./build.sh dropbear
-./build.sh mosquitto
-./build.sh pureftpd
-./build.sh libfuse
-```
+All bundled binaries replaced with current, patched versions cross-compiled for `arm-hisiv300-linux` (`ARMv5te`, `uClibc 0.9.33.2`):
 
-The full build takes roughly **10–20 minutes** on a modern machine.
+| Package | Original | Updated | Key reason |
+|---|---|---|---|
+| OpenSSL | 1.1.x (**EOL**) | **3.3.2** | End-of-life Sep 2023, no further CVE patches |
+| curl | 7.86.0-DEV | **8.20.0** | ~3 years of security fixes, dev snapshot replaced |
+| dropbear | 2018.76 | **2025.89** | CVE-2025-14282 + 7 years of accumulated patches |
+| mosquitto | 1.5.8 | **2.1.0** | Major version bump, hardened packet handling |
+| pure-ftpd | 1.0.47 | **1.0.52** | 5 patch releases |
+| libfuse3 | 3.4.2 | **3.18.1** | 14 minor versions of fixes |
+| cJSON | — | **1.7.18** | New dependency required by mosquitto 2.x |
 
-## Step 4 — Deploy to camera
+---
 
-The build produces `yi-hack-v5-updated-packages.tgz` in the project root.
-Extract it over your existing firmware package:
+## Deploy to camera
+
+1. Download `yi-hack-v5-updated-packages.tgz` from the [latest release](https://github.com/Temporalwar/yi-hack-v5-updated/releases/latest)
+2. Extract it over your existing yi-hack-v5 SD card folder:
 
 ```bash
-# Merge into the existing yi_home_1080p_0_4_1_fixed.tgz
-mkdir -p /tmp/merge/yi_home_1080p
-tar -xzf yi_home_1080p_0_4_1_fixed.tgz -C /tmp/merge
-tar -xzf yi-hack-v5-updated-packages.tgz -C /tmp/merge/yi_home_1080p
-tar -czf yi_home_1080p_0_4_1_updated.tgz -C /tmp/merge yi_home_1080p/
+tar -xzf yi-hack-v5-updated-packages.tgz -C /path/to/sdcard/
 ```
 
-Then flash `yi_home_1080p_0_4_1_updated.tgz` to the SD card as normal.
+3. Insert the SD card and reboot the camera
+4. After boot, harden your config file permissions:
 
-## Alternative: Docker
+```bash
+chmod 600 /tmp/sd/yi-hack-v5/etc/system.conf
+chmod 600 /tmp/sd/yi-hack-v5/etc/mqttv4.conf
+```
 
-If you prefer a fully isolated build:
+---
+
+## Build it yourself
+
+Builds run automatically on every push via GitHub Actions (see `.github/workflows/build.yml`). To build locally you need the `arm-hisiv300-linux` toolchain.
+
+### Option A — Docker (recommended, no toolchain install needed)
 
 ```bash
 docker build -t yi-hack-builder .
 docker run --rm -v "$PWD/output:/build/output" yi-hack-builder
 ```
 
-The Docker image downloads and installs the toolchain automatically.
+### Option B — Native Linux build
 
-## Notes on uClibc compatibility
+**Step 1 — Install the toolchain**
 
-- **OpenSSL 3.x**: Tested against uClibc 0.9.33.2. The `no-async` flag is
-  required (uClibc lacks `getcontext`/`makecontext`).
-- **dropbear 2025.89**: `DROPBEAR_SVR_DROP_PRIVS` is disabled via
-  `localoptions.h` because `setresgid()` is unavailable in uClibc 0.9.33.2.
-  CVE-2025-14282 is mitigated separately — unix stream forwarding is not used
-  by yi-hack-v5, so this is safe.
-- **libfuse3**: Built without `utils` and `useroot` options to avoid
-  `mount.fuse3` dependency on host-only tools.
-- **curl**: Built as a static binary (no shared libcurl) to keep deployment
-  simple — only the `curl` binary itself is needed by the scripts.
+```bash
+mkdir -p /opt/hisi-linux/x86-arm && cd /opt/hisi-linux/x86-arm
+curl -fL https://github.com/OpenIPC/toolchains/releases/download/v1/arm-hisiv300-linux.tar.bz2 \
+     -o arm-hisiv300-linux.tar.bz2
+tar -xjf arm-hisiv300-linux.tar.bz2 && rm arm-hisiv300-linux.tar.bz2
+```
+
+**Step 2 — Install host build tools**
+
+```bash
+sudo apt update && sudo apt install build-essential cmake ninja-build wget bzip2
+pip3 install meson==1.3.2
+```
+
+**Step 3 — Build**
+
+```bash
+chmod +x build.sh && ./build.sh
+```
+
+Output: `yi-hack-v5-updated-packages.tgz` in the project root. Build takes ~15–20 minutes.
+
+---
+
+## Compatibility notes
+
+- **OpenSSL 3.x on uClibc**: `no-async` flag required — uClibc 0.9.33.2 lacks `getcontext`/`makecontext`
+- **dropbear 2025.89**: `DROPBEAR_SVR_DROP_PRIVS` disabled via `localoptions.h` — `setresgid()` unavailable in uClibc. CVE-2025-14282 is still mitigated as yi-hack-v5 does not use unix stream forwarding
+- **libfuse3**: Built without `utils` and `useroot` to avoid host-only `mount.fuse3` dependency
+- **curl**: Built as a static binary — only the `curl` binary is needed by the firmware scripts
+
+---
+
+## Credits
+
+Based on the work of [alienatedsec](https://github.com/alienatedsec/yi-hack-v5) and [roleoroleo](https://github.com/roleoroleo).
