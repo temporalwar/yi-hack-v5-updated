@@ -1,9 +1,9 @@
-name: Build and Release
+name: Create Release
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ] # This triggers the release only when you push a tag like v1.0.3
+    tags:
+      - 'v*' # Triggers when you push a tag like v1.0.0, v1.0.3
 
 jobs:
   build:
@@ -12,13 +12,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Build Environment
+      - name: Setup Toolchain
         run: |
-          # Create working directories
           mkdir -p ${{ github.workspace }}/scripts
-          mkdir -p ${{ github.workspace }}/build_output
-          
-          # [Keep your toolchain generation here]
+          mkdir -p ${{ github.workspace }}/release
           cat <<'EOF' > ${{ github.workspace }}/scripts/hisiv300.cmake
           set(CMAKE_SYSTEM_NAME Linux)
           set(CMAKE_SYSTEM_PROCESSOR arm)
@@ -33,30 +30,16 @@ jobs:
 
       - name: Run Build
         run: |
-          # Build your project
-          # Note: Adjust the 'cmake' path if your CMakeLists.txt is not in the root
           cmake . -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/scripts/hisiv300.cmake
           make VERBOSE=1
           
-          # Move your result files into the build_output folder
-          # Change '*.bin' to match the extension of your compiled files (e.g., .so, .a, .elf)
-          find . -name "*.bin" -o -name "*.so" -o -name "*.a" -exec cp {} ${{ github.workspace }}/build_output/ \;
+          # Force copy ALL potential firmware files to the release folder
+          # This catches .bin, .img, .so, .a files no matter where make put them
+          find . -type f \( -name "*.bin" -o -name "*.img" -o -name "*.so" -o -name "*.a" \) -exec cp {} ${{ github.workspace }}/release/ \;
 
-      - name: Debug - List Found Files
-        run: |
-          echo "These are the files found after build:"
-          ls -R ${{ github.workspace }}/build_output/
-
-      - name: Upload Artifacts (Testing)
-        uses: actions/upload-artifact@v4
-        with:
-          name: compiled-files
-          path: ${{ github.workspace }}/build_output/
-
-      - name: Create Release (Only on Tags)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ github.workspace }}/build_output/*
+          files: ${{ github.workspace }}/release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
