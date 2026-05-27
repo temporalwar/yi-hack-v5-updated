@@ -47,12 +47,12 @@ RUN echo "=== Toolchain ===" && \
     echo "=== Meson ===" && \
     meson --version && \
     echo "=== Ninja ===" && \
-    ninja --version [cite: 5] && \
+    ninja --version && \
     echo "=== All OK ==="
 
 WORKDIR /build
 COPY Makefile .
-COPY scripts/ scripts/ [cite: 6]
+COPY scripts/ scripts/
 COPY patches/ patches/
 
 CMD ["make", "all"]
