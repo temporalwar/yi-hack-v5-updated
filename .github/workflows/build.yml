@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# THIS IS THE FIX:
+permissions:
+  contents: write # This allows the action to create releases and push files
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,14 +18,10 @@ jobs:
 
       - name: Package Firmware
         run: |
-          # Create a folder for our release
           mkdir -p ${{ github.workspace }}/release_package
-          
-          # Copy all important project files into the package folder
-          # We skip the .git folder and our workflow folder to keep it clean
+          # Sync files (excluding git/github folders)
           rsync -av --exclude='.git' --exclude='.github' --exclude='release_package' . ${{ github.workspace }}/release_package/
-          
-          # Create the tar.gz file (this is what you download for your SD card)
+          # Create the tar.gz
           tar -czf yi-hack-v5-updated.tar.gz -C ${{ github.workspace }}/release_package .
 
       - name: Create GitHub Release
@@ -30,6 +30,7 @@ jobs:
           files: yi-hack-v5-updated.tar.gz
           tag_name: latest
           name: Latest Build
-          body: "Automated build of yi-hack-v5-updated. Extract the contents of this .tar.gz to the root of your SD card."
+          body: "Automated build of yi-hack-v5-updated. Extract the contents to your SD card."
+          make_latest: true # This makes it the "Latest" release automatically
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
