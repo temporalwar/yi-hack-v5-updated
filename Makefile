@@ -99,10 +99,10 @@ $(STAGING_LIB)/libssl.so.3:
 	fi
 	@echo "  CFG openssl-$(OPENSSL_VER)"
 	cd $(OPENSSL_SRC) && \
-	    AR="$(AR)" RANLIB="$(RANLIB)" \
+	    PATH="$(TC_BIN):$$PATH" \
+	    CC="$(CC)" AR="$(AR)" RANLIB="$(RANLIB)" \
 	    CFLAGS="$(COMMON_CFLAGS)" \
 	    ./Configure linux-armv4 \
-	        --cross-compile-prefix="$(CROSS_PREFIX)" \
 	        --prefix=$(STAGING_DIR) \
 	        --openssldir=$(STAGING_DIR)/etc/ssl \
 	        shared \
@@ -112,9 +112,9 @@ $(STAGING_LIB)/libssl.so.3:
 	        no-docs \
 	        -D_GNU_SOURCE
 	@echo "  BUILD openssl-$(OPENSSL_VER)"
-	$(MAKE) -C $(OPENSSL_SRC) -j$(shell nproc)
+	$(MAKE) -C $(OPENSSL_SRC) -j$(shell nproc) PATH="$(TC_BIN):$$PATH"
 	@echo "  INSTALL openssl-$(OPENSSL_VER)"
-	$(MAKE) -C $(OPENSSL_SRC) install_sw
+	$(MAKE) -C $(OPENSSL_SRC) install_sw PATH="$(TC_BIN):$$PATH"
 	@echo "  OK openssl-$(OPENSSL_VER)"
 
 # ============================================================
