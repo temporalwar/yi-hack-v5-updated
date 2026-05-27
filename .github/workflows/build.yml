@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # This adds the "Run workflow" button on the website
+  workflow_dispatch:
 
 jobs:
   build:
@@ -30,10 +30,18 @@ jobs:
 
       - name: Run Build
         run: |
+          # Automatically find the directory containing CMakeLists.txt
+          CMAKE_DIR=$(find . -name "CMakeLists.txt" -exec dirname {} \; | head -n 1)
+          echo "Found CMakeLists.txt in: $CMAKE_DIR"
+          
+          # Move into that directory to build
+          cd "$CMAKE_DIR"
+          
+          # Run cmake
           cmake . -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/scripts/hisiv300.cmake
           make VERBOSE=1
           
-          # This finds EVERY file created and moves it to the 'output_binaries' folder
+          # Find and move binaries back to the root output folder
           find . -type f \( -name "*.bin" -o -name "*.img" -o -name "*.so" -o -name "*.a" \) -exec cp {} ${{ github.workspace }}/output_binaries/ \;
 
       - name: Upload Artifacts
