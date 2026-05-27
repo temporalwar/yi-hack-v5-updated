@@ -108,8 +108,6 @@ endef
 #  - Use linux-armv4 target (no ARMv5 target exists in OpenSSL)
 #  - no-asm: ARM926EJ-S lacks instructions used in OpenSSL's ASM
 #  - no-async: uClibc lacks getcontext/makecontext
-#  - Do NOT pass CC= here — pass only AR/RANLIB + bare cross-compile-prefix
-#    OpenSSL resolves CC via prefix+PATH. Passing full-path CC causes doubling.
 #  - Pass PATH explicitly to all sub-make calls (make depend doesn't inherit)
 # ============================================================
 OPENSSL_SRC := $(BUILD_DIR)/openssl-$(OPENSSL_VER)
@@ -124,7 +122,6 @@ $(STAGING_LIB)/libssl.so.3:
 	@echo "  CFG openssl-$(OPENSSL_VER)"
 	cd $(OPENSSL_SRC) && \
 	    PATH="$(TC_BIN):$$PATH" \
-	    AR="$(AR)" RANLIB="$(RANLIB)" \
 	    CFLAGS="$(COMMON_CFLAGS)" \
 	    ./Configure linux-armv4 \
 	        --cross-compile-prefix="$(CROSS_PREFIX)" \
@@ -409,4 +406,17 @@ package:
 	@printf "openssl    %s\n"   "$(OPENSSL_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
 	@printf "curl       %s\n"   "$(CURL_VER)"       >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
 	@printf "dropbear   %s\n"   "$(DROPBEAR_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "cjson      %s\n"   "$(CJSON_VER)"      >> $(OUT_DIR)/yi
+	@printf "cjson      %s\n"   "$(CJSON_VER)"      >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "mosquitto  %s\n"   "$(MOSQUITTO_VER)"  >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "pure-ftpd  %s\n"   "$(PUREFTPD_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "libfuse3   %s\n"   "$(LIBFUSE_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@cd $(OUT_DIR) && tar -czf ../yi-hack-v5-updated-packages.tgz yi-hack-v5/
+	@echo ""
+	@echo "  Tarball: $(CURDIR)/yi-hack-v5-updated-packages.tgz"
+
+# ── Also update hisiv300.cmake and meson.ini with correct paths ────────────
+clean:
+	rm -rf $(BUILD_DIR) $(STAGING_DIR) $(OUT_DIR)
+
+distclean: clean
+	rm -rf $(DOWNLOAD_DIR)
