@@ -6,7 +6,7 @@
 #  Confirmed toolchain layout from OpenIPC tarball:
 #    Binaries: /opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/
 #    Prefix:   arm-hisiv300-linux-uclibcgnueabi-
-#    Sysroot:  .../target/armv5te_arm9_soft/
+#    Sysroot:  .../target/
 # ============================================================
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -14,7 +14,9 @@ TOOLCHAIN_DIR ?= /opt/hisi-linux/x86-arm/arm-hisiv300-linux
 TC_BIN        := $(TOOLCHAIN_DIR)/bin
 CROSS_PREFIX  := arm-hisiv300-linux-uclibcgnueabi-
 CROSS         := $(TC_BIN)/$(CROSS_PREFIX)
-SYSROOT       := $(TOOLCHAIN_DIR)/target/armv5te_arm9_soft
+
+# FIX: Sysroot pulled up to the base target directory to fix limits.h
+SYSROOT       := $(TOOLCHAIN_DIR)/target
 export PATH   := $(TC_BIN):$(PATH)
 
 CC      := $(CROSS)gcc
@@ -54,7 +56,8 @@ COMMON_CFLAGS := \
     -fdata-sections \
     --sysroot=$(SYSROOT)
 
-COMMON_LDFLAGS  := -Wl,--gc-sections -L$(STAGING_LIB) --sysroot=$(SYSROOT)
+# FIX: Added explicit library path for the arm9 soft multilib folder
+COMMON_LDFLAGS  := -Wl,--gc-sections -L$(STAGING_LIB) -L$(SYSROOT)/armv5te_arm9_soft/lib --sysroot=$(SYSROOT)
 PKG_CONFIG_PATH := $(STAGING_LIB)/pkgconfig
 
 # ── Package versions ───────────────────────────────────────────────────────
@@ -390,7 +393,7 @@ package:
 	          mosquitto_pub mosquitto_sub; do \
 	    [ -f $(STAGING_BIN)/$$b ] && \
 	        cp -v $(STAGING_BIN)/$$b $(OUT_DIR)/yi-hack-v5/bin/ || true; \
-	done
+	    done
 	@[ -f $(STAGING_SBIN)/pure-ftpd ] && \
 	    cp -v $(STAGING_SBIN)/pure-ftpd $(OUT_DIR)/yi-hack-v5/sbin/ || true
 	@[ -f $(STAGING_SBIN)/dropbear ] && \
@@ -401,22 +404,9 @@ package:
 	    libfuse3.so.3 libfuse3.so.3.$(LIBFUSE_VER); do \
 	    find $(STAGING_LIB) -name "$$lib" -type f 2>/dev/null | head -1 | \
 	        xargs -I{} cp -v {} $(OUT_DIR)/yi-hack-v5/lib/ 2>/dev/null || true; \
-	done
+	    done
 	@printf "Built on %s\n"     "$$(date -u)"       > $(OUT_DIR)/yi-hack-v5/package-versions.txt
 	@printf "openssl    %s\n"   "$(OPENSSL_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
 	@printf "curl       %s\n"   "$(CURL_VER)"       >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
 	@printf "dropbear   %s\n"   "$(DROPBEAR_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "cjson      %s\n"   "$(CJSON_VER)"      >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "mosquitto  %s\n"   "$(MOSQUITTO_VER)"  >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "pure-ftpd  %s\n"   "$(PUREFTPD_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "libfuse3   %s\n"   "$(LIBFUSE_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@cd $(OUT_DIR) && tar -czf ../yi-hack-v5-updated-packages.tgz yi-hack-v5/
-	@echo ""
-	@echo "  Tarball: $(CURDIR)/yi-hack-v5-updated-packages.tgz"
-
-# ── Also update hisiv300.cmake and meson.ini with correct paths ────────────
-clean:
-	rm -rf $(BUILD_DIR) $(STAGING_DIR) $(OUT_DIR)
-
-distclean: clean
-	rm -rf $(DOWNLOAD_DIR)
+	@printf "cjson      %s\n"   "$(CJSON_VER)"      >> $(OUT_DIR)/yi

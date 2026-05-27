@@ -12,9 +12,13 @@ RUN dpkg --add-architecture i386 && \
     cmake \
     bzip2 xz-utils unzip file \
     libssl-dev zlib1g-dev \
-    python3 python3-pip \
+    python3 python3-pip python3-setuptools \
     libc6:i386 libncurses5:i386 libstdc++6:i386 zlib1g:i386 \
     && rm -rf /var/lib/apt/lists/*
+
+# ── Fix Python 3.6 pip environment requirements ───────────────────────────
+# Install an older version of setuptools and wheel so meson can build from source
+RUN pip3 install 'setuptools<58.0.0' wheel
 
 # ── Pin exact meson/ninja versions from upstream wiki ─────────────────────
 # upstream specifies meson==0.51.1 and ninja==1.9.0 explicitly
@@ -23,7 +27,7 @@ RUN pip3 install 'meson==0.51.1' 'ninja==1.9.0'
 # ── Install ninja binary (meson needs it on PATH) ─────────────────────────
 RUN pip3 show ninja && \
     ln -sf $(python3 -c "import ninja; import os; print(os.path.dirname(ninja.__file__))")/data/bin/ninja /usr/local/bin/ninja || \
-    apt-get install -y ninja-build
+    (apt-get update && apt-get install -y ninja-build && rm -rf /var/lib/apt/lists/*)
 
 # ── Download and extract toolchain ────────────────────────────────────────
 # Confirmed from diagnostic: binaries at bin/, NOT target/bin/
@@ -43,12 +47,12 @@ RUN echo "=== Toolchain ===" && \
     echo "=== Meson ===" && \
     meson --version && \
     echo "=== Ninja ===" && \
-    ninja --version && \
+    ninja --version [cite: 5] && \
     echo "=== All OK ==="
 
 WORKDIR /build
 COPY Makefile .
-COPY scripts/ scripts/
+COPY scripts/ scripts/ [cite: 6]
 COPY patches/ patches/
 
 CMD ["make", "all"]
