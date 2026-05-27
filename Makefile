@@ -1,47 +1,60 @@
 # ============================================================
 #  yi-hack-v5 package update build system
-#  Target: arm-hisiv300-linux-uclibcgnueabi (Hi3518ev200)
+#  Target: arm-hisiv300-linux-uclibcgnueabi (Hi3518ev200 / ARM926EJ-S)
 #  Host:   x86_64 Linux
+#
+#  Confirmed toolchain layout from OpenIPC tarball:
+#    Binaries: /opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/
+#    Prefix:   arm-hisiv300-linux-uclibcgnueabi-
+#    Sysroot:  .../target/armv5te_arm9_soft/
 # ============================================================
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
-# TOOLCHAIN_BIN can be passed in from Docker (found dynamically via `find`)
-# Falls back to the standard extracted path if not set.
 TOOLCHAIN_DIR ?= /opt/hisi-linux/x86-arm/arm-hisiv300-linux
-TC_BIN        ?= $(TOOLCHAIN_DIR)/target/bin
-ifdef TOOLCHAIN_BIN
-TC_BIN        := $(TOOLCHAIN_BIN)
-endif
-# CROSS_PREFIX = bare name only — used by OpenSSL --cross-compile-prefix
-# CROSS        = full path — used to build CC/AR/etc
-CROSS_PREFIX  := arm-hisiv300-linux-
+TC_BIN        := $(TOOLCHAIN_DIR)/bin
+CROSS_PREFIX  := arm-hisiv300-linux-uclibcgnueabi-
 CROSS         := $(TC_BIN)/$(CROSS_PREFIX)
+SYSROOT       := $(TOOLCHAIN_DIR)/target/armv5te_arm9_soft
 export PATH   := $(TC_BIN):$(PATH)
 
 CC      := $(CROSS)gcc
 CXX     := $(CROSS)g++
 AR      := $(CROSS)ar
 RANLIB  := $(CROSS)ranlib
+# Use the toolchain stripper — never the host strip (corrupts ARM binaries)
 STRIP   := $(CROSS)strip
 LD      := $(CROSS)ld
 
-HOST_TRIPLE := arm-hisiv300-linux
-SYSROOT     := $(TOOLCHAIN_DIR)/target/arm-hisiv300-linux-uclibcgnueabi/sysroot
+HOST_TRIPLE := arm-hisiv300-linux-uclibcgnueabi
 
 # ── Output layout ─────────────────────────────────────────────────────────
-BUILD_DIR   := $(CURDIR)/build
-STAGING_DIR := $(CURDIR)/staging
-OUT_DIR     := $(CURDIR)/output
+BUILD_DIR    := $(CURDIR)/build
+STAGING_DIR  := $(CURDIR)/staging
+OUT_DIR      := $(CURDIR)/output
 
 STAGING_LIB  := $(STAGING_DIR)/lib
 STAGING_BIN  := $(STAGING_DIR)/bin
 STAGING_SBIN := $(STAGING_DIR)/sbin
 STAGING_INC  := $(STAGING_DIR)/include
 
-# Common compiler/linker flags
-COMMON_CFLAGS  := -Os -march=armv5te -mtune=arm926ej-s -msoft-float \
-                  -ffunction-sections -fdata-sections
-COMMON_LDFLAGS := -Wl,--gc-sections -L$(STAGING_LIB)
+# ── Compiler flags (ARM926EJ-S specific) ──────────────────────────────────
+# -mfloat-abi=soft   : NO FPU on ARM926EJ-S — mandatory or Illegal instruction
+# -msoft-float       : use software floating point library
+# -mcpu=arm926ej-s   : exact CPU tuning
+# -fno-short-enums   : uClibc ABI requirement
+# --sysroot          : isolate from host glibc headers
+COMMON_CFLAGS := \
+    -Os \
+    -mcpu=arm926ej-s \
+    -march=armv5te \
+    -mfloat-abi=soft \
+    -msoft-float \
+    -fno-short-enums \
+    -ffunction-sections \
+    -fdata-sections \
+    --sysroot=$(SYSROOT)
+
+COMMON_LDFLAGS  := -Wl,--gc-sections -L$(STAGING_LIB) --sysroot=$(SYSROOT)
 PKG_CONFIG_PATH := $(STAGING_LIB)/pkgconfig
 
 # ── Package versions ───────────────────────────────────────────────────────
@@ -79,7 +92,6 @@ dirs:
 	@mkdir -p $(BUILD_DIR) $(STAGING_DIR) $(STAGING_LIB) $(STAGING_BIN) \
 	          $(STAGING_SBIN) $(STAGING_INC) $(OUT_DIR) $(DOWNLOAD_DIR)
 
-# ── Helper: download if missing ────────────────────────────────────────────
 define download
 	@if [ ! -f $(DOWNLOAD_DIR)/$(notdir $(1)) ]; then \
 	    echo "  DL  $(notdir $(1))"; \
@@ -89,9 +101,13 @@ endef
 
 # ============================================================
 #  1. OpenSSL 3.3.2
-#     Must be built first — curl, dropbear, mosquitto all link it.
-#     KEY: do NOT set CC= here. OpenSSL prepends --cross-compile-prefix
-#     onto CC, doubling the path. Let it resolve CC from PATH instead.
+#  KEY NOTES:
+#  - Use linux-armv4 target (no ARMv5 target exists in OpenSSL)
+#  - no-asm: ARM926EJ-S lacks instructions used in OpenSSL's ASM
+#  - no-async: uClibc lacks getcontext/makecontext
+#  - Do NOT pass CC= here — pass only AR/RANLIB + bare cross-compile-prefix
+#    OpenSSL resolves CC via prefix+PATH. Passing full-path CC causes doubling.
+#  - Pass PATH explicitly to all sub-make calls (make depend doesn't inherit)
 # ============================================================
 OPENSSL_SRC := $(BUILD_DIR)/openssl-$(OPENSSL_VER)
 
@@ -105,16 +121,20 @@ $(STAGING_LIB)/libssl.so.3:
 	@echo "  CFG openssl-$(OPENSSL_VER)"
 	cd $(OPENSSL_SRC) && \
 	    PATH="$(TC_BIN):$$PATH" \
-	    CC="$(CC)" AR="$(AR)" RANLIB="$(RANLIB)" \
+	    AR="$(AR)" RANLIB="$(RANLIB)" \
 	    CFLAGS="$(COMMON_CFLAGS)" \
 	    ./Configure linux-armv4 \
+	        --cross-compile-prefix="$(CROSS_PREFIX)" \
 	        --prefix=$(STAGING_DIR) \
 	        --openssldir=$(STAGING_DIR)/etc/ssl \
 	        shared \
-	        no-async \
+	        no-asm \
+	        no-hw \
 	        no-engine \
+	        no-async \
 	        no-tests \
 	        no-docs \
+	        -fPIC \
 	        -D_GNU_SOURCE
 	@echo "  BUILD openssl-$(OPENSSL_VER)"
 	$(MAKE) -C $(OPENSSL_SRC) -j$(shell nproc) PATH="$(TC_BIN):$$PATH"
@@ -171,10 +191,9 @@ $(STAGING_BIN)/curl:
 
 # ============================================================
 #  3. Dropbear 2025.89
-#     Fixes CVE-2025-14282 (privilege escalation via unix
-#     stream forwarding). uClibc compat patch disables
-#     SVR_DROP_PRIVS which needs setresgid() unavailable
-#     in uClibc 0.9.33.2.
+#  - CVE-2025-14282 patched
+#  - DROPBEAR_SVR_DROP_PRIVS disabled: setresgid() unavailable in uClibc
+#  - Prefix set to SD card path so configs resolve correctly on camera
 # ============================================================
 DROPBEAR_SRC := $(BUILD_DIR)/dropbear-$(DROPBEAR_VER)
 
@@ -196,6 +215,7 @@ $(STAGING_SBIN)/dropbear:
 	    ./configure \
 	        --host=$(HOST_TRIPLE) \
 	        --prefix=$(STAGING_DIR) \
+	        --sysconfdir=/tmp/sd/yi-hack-v5/etc \
 	        --disable-zlib \
 	        --disable-wtmp \
 	        --disable-lastlog \
@@ -210,14 +230,15 @@ $(STAGING_SBIN)/dropbear:
 
 # ============================================================
 #  4. cJSON 1.7.18
-#     Mosquitto 2.x requires cJSON. Build and stage it first.
+#  - mosquitto 2.x requires cJSON
+#  - Built as static lib only — only mosquitto uses it, no need for shared
 # ============================================================
 CJSON_SRC   := $(BUILD_DIR)/cJSON-$(CJSON_VER)
 CJSON_BUILD := $(BUILD_DIR)/cJSON-$(CJSON_VER)-build
 
-cjson: $(STAGING_LIB)/libcjson.so.1
+cjson: $(STAGING_LIB)/libcjson.a
 
-$(STAGING_LIB)/libcjson.so.1:
+$(STAGING_LIB)/libcjson.a:
 	$(call download,$(CJSON_URL))
 	@if [ ! -d $(CJSON_SRC) ]; then \
 	    tar -xzf $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz -C $(BUILD_DIR); \
@@ -231,19 +252,18 @@ $(STAGING_LIB)/libcjson.so.1:
 	        -DCMAKE_BUILD_TYPE=MinSizeRel \
 	        -DENABLE_CJSON_TEST=OFF \
 	        -DENABLE_CJSON_UTILS=OFF \
-	        -DBUILD_SHARED_LIBS=ON
+	        -DBUILD_SHARED_LIBS=OFF \
+	        -DBUILD_STATIC_LIBS=ON
 	@echo "  BUILD cJSON-$(CJSON_VER)"
 	$(MAKE) -C $(CJSON_BUILD) -j$(shell nproc)
 	$(MAKE) -C $(CJSON_BUILD) install
-	@if [ ! -f $(STAGING_LIB)/libcjson.so.1 ]; then \
-	    ln -sf libcjson.so.$(CJSON_VER) $(STAGING_LIB)/libcjson.so.1; \
-	fi
 	@echo "  OK cJSON-$(CJSON_VER)"
 
 # ============================================================
 #  5. Mosquitto 2.1.0
-#     WITH_BROKER=OFF — we only need libmosquitto + pub/sub tools.
-#     Depends on cJSON being staged first.
+#  - WITH_BROKER=OFF: only libmosquitto + pub/sub tools needed
+#  - cJSON linked statically — saves space on camera filesystem
+#  - sysconfdir points to SD card location
 # ============================================================
 MOSQUITTO_SRC   := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)
 MOSQUITTO_BUILD := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)-build
@@ -264,7 +284,7 @@ $(STAGING_LIB)/libmosquitto.so.1:
 	        -DCMAKE_BUILD_TYPE=MinSizeRel \
 	        -DOPENSSL_ROOT_DIR=$(STAGING_DIR) \
 	        -DCJSON_INCLUDE_DIRS=$(STAGING_INC) \
-	        -DCJSON_LIBRARIES=$(STAGING_LIB)/libcjson.so \
+	        -DCJSON_LIBRARIES=$(STAGING_LIB)/libcjson.a \
 	        -DWITH_BROKER=OFF \
 	        -DWITH_APPS=ON \
 	        -DWITH_PLUGINS=OFF \
@@ -302,6 +322,7 @@ $(STAGING_SBIN)/pure-ftpd:
 	    ./configure \
 	        --host=$(HOST_TRIPLE) \
 	        --prefix=$(STAGING_DIR) \
+	        --sysconfdir=/tmp/sd/yi-hack-v5/etc \
 	        --without-ldap \
 	        --without-mysql \
 	        --without-pgsql \
@@ -319,7 +340,7 @@ $(STAGING_SBIN)/pure-ftpd:
 	@echo "  OK pure-ftpd-$(PUREFTPD_VER)"
 
 # ============================================================
-#  7. libfuse3 3.18.1  (meson/ninja build)
+#  7. libfuse3 3.18.1
 # ============================================================
 LIBFUSE_SRC   := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)
 LIBFUSE_BUILD := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)-build
@@ -346,7 +367,7 @@ $(STAGING_LIB)/libfuse3.so.3:
 	ninja -C $(LIBFUSE_BUILD) install
 	@echo "  OK libfuse-$(LIBFUSE_VER)"
 
-# ── Strip all ARM ELF binaries and libraries ───────────────────────────────
+# ── Strip using toolchain stripper (NEVER host strip — corrupts ARM ELFs) ──
 strip-all:
 	@echo "  STRIP binaries"
 	@find $(STAGING_BIN) $(STAGING_SBIN) -type f 2>/dev/null | \
@@ -361,11 +382,10 @@ strip-all:
 	            $(STRIP) --strip-unneeded "$$f" 2>/dev/null || true; \
 	    done
 
-# ── Assemble output tarball (drop-in overlay for SD card) ─────────────────
+# ── Assemble SD card overlay tarball ──────────────────────────────────────
 package:
 	@echo "  PKG  Assembling firmware overlay..."
 	@mkdir -p $(OUT_DIR)/yi-hack-v5/{bin,sbin,lib}
-	@# Binaries
 	@for b in curl dropbear dbclient dropbearkey dropbearconvert scp \
 	          mosquitto_pub mosquitto_sub; do \
 	    [ -f $(STAGING_BIN)/$$b ] && \
@@ -375,30 +395,26 @@ package:
 	    cp -v $(STAGING_SBIN)/pure-ftpd $(OUT_DIR)/yi-hack-v5/sbin/ || true
 	@[ -f $(STAGING_SBIN)/dropbear ] && \
 	    cp -v $(STAGING_SBIN)/dropbear $(OUT_DIR)/yi-hack-v5/sbin/ || true
-	@# Libraries
 	@for lib in \
 	    libssl.so.3 libcrypto.so.3 \
-	    libcjson.so.1 \
 	    libmosquitto.so.1 \
 	    libfuse3.so.3 libfuse3.so.3.$(LIBFUSE_VER); do \
 	    find $(STAGING_LIB) -name "$$lib" -type f 2>/dev/null | head -1 | \
 	        xargs -I{} cp -v {} $(OUT_DIR)/yi-hack-v5/lib/ 2>/dev/null || true; \
 	done
-	@# Version manifest
-	@printf "Built on %s\n"        "$$(date -u)"         > $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "openssl    %s\n"      "$(OPENSSL_VER)"      >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "curl       %s\n"      "$(CURL_VER)"         >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "dropbear   %s\n"      "$(DROPBEAR_VER)"     >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "cjson      %s\n"      "$(CJSON_VER)"        >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "mosquitto  %s\n"      "$(MOSQUITTO_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "pure-ftpd  %s\n"      "$(PUREFTPD_VER)"     >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
-	@printf "libfuse3   %s\n"      "$(LIBFUSE_VER)"      >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "Built on %s\n"     "$$(date -u)"       > $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "openssl    %s\n"   "$(OPENSSL_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "curl       %s\n"   "$(CURL_VER)"       >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "dropbear   %s\n"   "$(DROPBEAR_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "cjson      %s\n"   "$(CJSON_VER)"      >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "mosquitto  %s\n"   "$(MOSQUITTO_VER)"  >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "pure-ftpd  %s\n"   "$(PUREFTPD_VER)"   >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
+	@printf "libfuse3   %s\n"   "$(LIBFUSE_VER)"    >> $(OUT_DIR)/yi-hack-v5/package-versions.txt
 	@cd $(OUT_DIR) && tar -czf ../yi-hack-v5-updated-packages.tgz yi-hack-v5/
 	@echo ""
 	@echo "  Tarball: $(CURDIR)/yi-hack-v5-updated-packages.tgz"
-	@echo "  Extract over /tmp/sd/ on the camera or merge with firmware tgz."
 
-# ── Clean ──────────────────────────────────────────────────────────────────
+# ── Also update hisiv300.cmake and meson.ini with correct paths ────────────
 clean:
 	rm -rf $(BUILD_DIR) $(STAGING_DIR) $(OUT_DIR)
 
