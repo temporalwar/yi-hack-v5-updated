@@ -1,9 +1,9 @@
-name: Create Release
+name: Build and Release
 
 on:
   push:
-    tags:
-      - 'v*' # Triggers when you push a tag like v1.0.0, v1.0.3
+    branches: [ main ]
+  workflow_dispatch: # This adds the "Run workflow" button on the website
 
 jobs:
   build:
@@ -15,7 +15,7 @@ jobs:
       - name: Setup Toolchain
         run: |
           mkdir -p ${{ github.workspace }}/scripts
-          mkdir -p ${{ github.workspace }}/release
+          mkdir -p ${{ github.workspace }}/output_binaries
           cat <<'EOF' > ${{ github.workspace }}/scripts/hisiv300.cmake
           set(CMAKE_SYSTEM_NAME Linux)
           set(CMAKE_SYSTEM_PROCESSOR arm)
@@ -33,13 +33,11 @@ jobs:
           cmake . -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/scripts/hisiv300.cmake
           make VERBOSE=1
           
-          # Force copy ALL potential firmware files to the release folder
-          # This catches .bin, .img, .so, .a files no matter where make put them
-          find . -type f \( -name "*.bin" -o -name "*.img" -o -name "*.so" -o -name "*.a" \) -exec cp {} ${{ github.workspace }}/release/ \;
+          # This finds EVERY file created and moves it to the 'output_binaries' folder
+          find . -type f \( -name "*.bin" -o -name "*.img" -o -name "*.so" -o -name "*.a" \) -exec cp {} ${{ github.workspace }}/output_binaries/ \;
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: ${{ github.workspace }}/release/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: compiled-firmware-files
+          path: ${{ github.workspace }}/output_binaries/
