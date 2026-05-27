@@ -1,35 +1,54 @@
-FROM ubuntu:22.04
+FROM ubuntu:18.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TOOLCHAIN_DIR=/opt/hisi-linux/x86-arm/arm-hisiv300-linux
-ENV CROSS=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/bin/arm-hisiv300-linux-uclibcgnueabi-
-ENV PATH="${TOOLCHAIN_DIR}/target/bin:${PATH}"
-ENV SYSROOT=${TOOLCHAIN_DIR}/target/arm-hisiv300-linux-uclibcgnueabi/sysroot
 
-# ── Build host dependencies ────────────────────────────────────────────────
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl wget ca-certificates git \
-    autoconf automake libtool pkg-config \
-    cmake ninja-build python3 python3-pip \
-    bzip2 xz-utils unzip \
+# ── Host build tools ───────────────────────────────────────────────────────
+# Ubuntu 18.04 matches the upstream yi-hack-v5 build environment exactly.
+# 32-bit libs required: toolchain binaries are i686 ELFs.
+RUN dpkg --add-architecture i386 && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    build-essential autoconf automake libtool pkg-config \
+    curl wget ca-certificates git \
+    cmake \
+    bzip2 xz-utils unzip file \
     libssl-dev zlib1g-dev \
-    && pip3 install meson==1.3.2 \
+    python3 python3-pip python3-setuptools \
+    libc6:i386 libncurses5:i386 libstdc++6:i386 zlib1g:i386 \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Toolchain ──────────────────────────────────────────────────────────────
-# Download arm-hisiv300-linux toolchain from OpenIPC (bare .tar.bz2, no wrapper)
-RUN mkdir -p ${TOOLCHAIN_DIR} && \
+# ── Fix Python 3.6 pip environment requirements ───────────────────────────
+# Install an older version of setuptools and wheel so meson can build from source
+RUN pip3 install 'setuptools<58.0.0' wheel
+
+# ── Pin exact meson/ninja versions from upstream wiki ─────────────────────
+# upstream specifies meson==0.51.1 and ninja==1.9.0 explicitly
+RUN pip3 install 'meson==0.51.1' 'ninja==1.9.0'
+
+# ── Install ninja binary (meson needs it on PATH) ─────────────────────────
+RUN pip3 show ninja && \
+    ln -sf $(python3 -c "import ninja; import os; print(os.path.dirname(ninja.__file__))")/data/bin/ninja /usr/local/bin/ninja || \
+    (apt-get update && apt-get install -y ninja-build && rm -rf /var/lib/apt/lists/*)
+
+# ── Download and extract toolchain ────────────────────────────────────────
+# Confirmed from diagnostic: binaries at bin/, NOT target/bin/
+# Full prefix: arm-hisiv300-linux-uclibcgnueabi-
+RUN mkdir -p /opt/hisi-linux/x86-arm && \
     curl -fL "https://github.com/OpenIPC/toolchains/releases/download/v1/arm-hisiv300-linux.tar.bz2" \
          -o /tmp/tc.tar.bz2 && \
     tar -xjf /tmp/tc.tar.bz2 -C /opt/hisi-linux/x86-arm/ && \
     rm /tmp/tc.tar.bz2
 
-# Symlink so the toolchain's internal absolute paths resolve correctly
-RUN mkdir -p /opt/hisi-linux/x86-arm && \
-    if [ -d "/opt/hisi-linux/x86-arm/arm-hisiv300-linux" ]; then \
-        echo "Toolchain extracted successfully"; \
-        ls ${TOOLCHAIN_DIR}/target/bin/ | grep gcc | head -3; \
-    fi
+ENV TC_BIN=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin
+ENV PATH="${TC_BIN}:${PATH}"
+
+# ── Verify toolchain ───────────────────────────────────────────────────────
+RUN echo "=== Toolchain ===" && \
+    ${TC_BIN}/arm-hisiv300-linux-uclibcgnueabi-gcc --version && \
+    echo "=== Meson ===" && \
+    meson --version && \
+    echo "=== Ninja ===" && \
+    ninja --version && \
+    echo "=== All OK ==="
 
 WORKDIR /build
 COPY Makefile .

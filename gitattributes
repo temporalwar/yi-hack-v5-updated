@@ -1,0 +1,24 @@
+# Force LF line endings for everything that runs inside Linux containers
+* text=auto
+
+Makefile        text eol=lf
+*.sh            text eol=lf
+*.py            text eol=lf
+*.cmake         text eol=lf
+*.ini           text eol=lf
+*.patch         text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.conf          text eol=lf
+Dockerfile      text eol=lf
+
+# Windows-only files can keep CRLF
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+
+# Binaries — no line ending conversion
+*.tgz           binary
+*.gz            binary
+*.bz2           binary
+*.zip           binary
+*.so            binary
