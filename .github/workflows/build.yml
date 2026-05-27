@@ -12,40 +12,24 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Toolchain
+      - name: Package Firmware
         run: |
-          mkdir -p ${{ github.workspace }}/scripts
-          mkdir -p ${{ github.workspace }}/output_binaries
-          cat <<'EOF' > ${{ github.workspace }}/scripts/hisiv300.cmake
-          set(CMAKE_SYSTEM_NAME Linux)
-          set(CMAKE_SYSTEM_PROCESSOR arm)
-          set(CMAKE_C_COMPILER /opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclibcgnueabi-gcc)
-          set(CMAKE_SYSROOT /opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/armv5te_arm9_soft)
-          set(CMAKE_FIND_ROOT_PATH ${CMAKE_SYSROOT})
-          set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-          set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-          set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${CMAKE_SYSROOT}/lib -L${CMAKE_SYSROOT}/usr/lib -Wl,-rpath-link,${CMAKE_SYSROOT}/lib -Wl,-rpath-link,${CMAKE_SYSROOT}/usr/lib")
-          EOF
+          # Create a folder for our release
+          mkdir -p ${{ github.workspace }}/release_package
+          
+          # Copy all important project files into the package folder
+          # We skip the .git folder and our workflow folder to keep it clean
+          rsync -av --exclude='.git' --exclude='.github' --exclude='release_package' . ${{ github.workspace }}/release_package/
+          
+          # Create the tar.gz file (this is what you download for your SD card)
+          tar -czf yi-hack-v5-updated.tar.gz -C ${{ github.workspace }}/release_package .
 
-      - name: Run Build
-        run: |
-          # Automatically find the directory containing CMakeLists.txt
-          CMAKE_DIR=$(find . -name "CMakeLists.txt" -exec dirname {} \; | head -n 1)
-          echo "Found CMakeLists.txt in: $CMAKE_DIR"
-          
-          # Move into that directory to build
-          cd "$CMAKE_DIR"
-          
-          # Run cmake
-          cmake . -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/scripts/hisiv300.cmake
-          make VERBOSE=1
-          
-          # Find and move binaries back to the root output folder
-          find . -type f \( -name "*.bin" -o -name "*.img" -o -name "*.so" -o -name "*.a" \) -exec cp {} ${{ github.workspace }}/output_binaries/ \;
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: compiled-firmware-files
-          path: ${{ github.workspace }}/output_binaries/
+          files: yi-hack-v5-updated.tar.gz
+          tag_name: latest
+          name: Latest Build
+          body: "Automated build of yi-hack-v5-updated. Extract the contents of this .tar.gz to the root of your SD card."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
