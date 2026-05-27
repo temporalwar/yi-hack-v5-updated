@@ -5,9 +5,13 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# THIS IS THE FIX:
+# THIS IS THE FIX FOR PERMISSIONS:
 permissions:
   contents: write # This allows the action to create releases and push files
+
+# THIS IS THE FIX FOR THE NODE 20 WARNING:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
 jobs:
   build:
