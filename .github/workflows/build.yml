@@ -1,51 +1,49 @@
 name: Cross-Compile Build
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      # Ensure this is the image containing your cross-compiler
-      image: ubuntu:18.04 
-    
+    # Assuming your current setup relies on a specific container or pre-configured environment
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Debug Environment
+        run: |
+          echo "--- Checking Compiler Location ---"
+          which arm-hisiv300-linux-uclibcgnueabi-gcc || echo "Compiler not in PATH"
+          echo "--- Searching for missing files ---"
+          find /opt/hisi-linux -name crt1.o 2>/dev/null || echo "No crt1.o found in /opt/hisi-linux"
+
       - name: Create Toolchain Config
         run: |
           mkdir -p /build/scripts
+          # We use a standard CMAKE_SYSROOT. 
+          # IF the 'find' command above shows the file in a different folder, 
+          # update the CMAKE_SYSROOT below to match that path.
           cat <<EOF > /build/scripts/hisiv300.cmake
           set(CMAKE_SYSTEM_NAME Linux)
           set(CMAKE_SYSTEM_PROCESSOR arm)
           set(CMAKE_C_COMPILER /opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclibcgnueabi-gcc)
-          set(CMAKE_CXX_COMPILER /opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclibcgnueabi-g++)
           set(CMAKE_SYSROOT /opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/armv5te_arm9_soft)
+          
           set(CMAKE_FIND_ROOT_PATH \${CMAKE_SYSROOT})
           set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
           set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
           set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-          set(CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -L\${CMAKE_SYSROOT}/lib -L\${CMAKE_SYSROOT}/usr/lib -Wl,-rpath-link,\${CMAKE_SYSROOT}/lib -Wl,-rpath-link,\${CMAKE_SYSROOT}/usr/lib")
+          
+          # Force the linker to look in the sysroot
+          set(CMAKE_EXE_LINKER_FLAGS "-L\${CMAKE_SYSROOT}/lib -L\${CMAKE_SYSROOT}/usr/lib -Wl,-rpath-link,\${CMAKE_SYSROOT}/lib -Wl,-rpath-link,\${CMAKE_SYSROOT}/usr/lib")
           EOF
 
-      - name: Verify Toolchain
-        run: |
-          if [ -f "/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/armv5te_arm9_soft/usr/lib/crt1.o" ]; then
-            echo "CRT files found, proceeding with build."
-          else
-            echo "ERROR: CRT files not found. The toolchain path might be incorrect."
-            exit 1
-          fi
-
-      - name: Configure cJSON
+      - name: Configure and Build
         run: |
           mkdir -p /build/build/cJSON-1.7.18-build
           cd /build/build/cJSON-1.7.18-build
+          
+          # Adding VERBOSE=1 to the cmake/make command is key for debugging
           cmake /build/build/cJSON-1.7.18 \
             -DCMAKE_TOOLCHAIN_FILE=/build/scripts/hisiv300.cmake \
             -DCMAKE_INSTALL_PREFIX=/build/staging \
@@ -54,9 +52,6 @@ jobs:
             -DENABLE_CJSON_UTILS=OFF \
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_STATIC_LIBS=ON
-
-      - name: Build cJSON
-        run: |
-          cd /build/build/cJSON-1.7.18-build
-          make -j$(nproc)
+            
+          make VERBOSE=1
           make install
