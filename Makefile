@@ -169,8 +169,6 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DCJSON_INCLUDE_DIR=$(STAGING_INC) \
 		-DCJSON_LIBRARY=$(STAGING_LIB)/libcjson.a \
 		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
-		-D_CMakeLTOTest_CXX_WORKS=TRUE \
-		-D_CMakeLTOTest_C_WORKS=TRUE \
 		-DWITH_TESTING=OFF \
 		-DWITH_DOCS=OFF \
 		-DWITH_TLS=ON \
@@ -185,13 +183,6 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@echo "Installing Mosquitto to Staging..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) install
 	@echo "OK mosquitto-$(MOSQUITTO_VER)"
-
-.PHONY: mosquitto-clean
-mosquitto-clean:
-	@echo "Cleaning Mosquitto..."
-	rm -rf $(MOSQUITTO_BUILD_DIR) $(MOSQUITTO_SRC)
-	rm -f $(STAGING_DIR)/usr/lib/libmosquitto.so*
-	rm -f $(STAGING_DIR)/usr/sbin/mosquitto
 
 # ============================================================
 #  6. Pure-FTPd
