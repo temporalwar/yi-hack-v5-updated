@@ -337,6 +337,10 @@ else
     SERIAL_NUMBER=$(dd bs=1 count=16 skip=596 if=/tmp/mmap.info 2>/dev/null | cut -c1-16)
 fi
 
+# Ensure onvif_simple_server is on PATH (binary may be in www/onvif/ on fresh installs)
+[ ! -f "$YI_HACK_PREFIX/bin/onvif_simple_server" ] && \
+    cp "$YI_HACK_PREFIX/www/onvif/onvif_simple_server" "$YI_HACK_PREFIX/bin/onvif_simple_server" 2>/dev/null || true
+
 if [[ $(get_config ONVIF) == "yes" ]] ; then
     if [[ $(get_config ONVIF_NETIF) == "wlan0" ]] ; then
         ONVIF_NETIF="wlan0"
