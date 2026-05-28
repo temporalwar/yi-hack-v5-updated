@@ -1,6 +1,6 @@
 # ============================================================ #
 #  yi-hack-v5 updated package update build system
-#  (Copy-Paste Safe Version - Web UI Packaging Included)
+#  (Optimized & Unified Staging/Packaging Version)
 # ============================================================ #
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -171,18 +171,14 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1: $(call download,$(MOSQUITTO_URL))
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) -j$(shell nproc)
 	@echo "Installing Mosquitto to Staging..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) install
-	@echo "Copying runtime files to Output layout..."
-	mkdir -p $(OUT_DIR)/lib
-	mkdir -p $(OUT_DIR)/sbin
-	cp -d $(STAGING_DIR)/usr/lib/libmosquitto.so* $(OUT_DIR)/lib/
-	cp $(STAGING_DIR)/usr/sbin/mosquitto $(OUT_DIR)/sbin/
+	@echo "OK mosquitto-$(MOSQUITTO_VER)"
 
 .PHONY: mosquitto-clean
 mosquitto-clean:
 	@echo "Cleaning Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR) $(MOSQUITTO_SRC)
-	rm -f $(OUT_DIR)/lib/libmosquitto.so*
-	rm -f $(OUT_DIR)/sbin/mosquitto
+	rm -f $(STAGING_DIR)/usr/lib/libmosquitto.so*
+	rm -f $(STAGING_DIR)/usr/sbin/mosquitto
 
 # ============================================================
 #  6. Pure-FTPd
@@ -221,8 +217,8 @@ $(STAGING_LIB)/libfuse3.so.3: $(call download,$(LIBFUSE_URL))
 # ============================================================
 strip-all:
 	@echo "  STRIP binaries"
-	@find $(STAGING_BIN) $(STAGING_SBIN) -type f -exec $(STRIP) --strip-unneeded {} \; 2>/dev/null || true
-	@find $(STAGING_LIB) -name "*.so*" -type f -exec $(STRIP) --strip-unneeded {} \; 2>/dev/null || true
+	@find $(STAGING_BIN) $(STAGING_SBIN) $(STAGING_DIR)/usr/sbin -type f -exec $(STRIP) --strip-unneeded {} \; 2>/dev/null || true
+	@find $(STAGING_LIB) $(STAGING_DIR)/usr/lib -name "*.so*" -type f -exec $(STRIP) --strip-unneeded {} \; 2>/dev/null || true
 
 package:
 	@echo "  PKG  firmware.tgz"
@@ -230,6 +226,8 @@ package:
 	@cp -a $(STAGING_BIN)/. $(OUT_DIR)/bin/ 2>/dev/null || true
 	@cp -a $(STAGING_SBIN)/. $(OUT_DIR)/sbin/ 2>/dev/null || true
 	@cp -a $(STAGING_LIB)/. $(OUT_DIR)/lib/ 2>/dev/null || true
+	@cp -a $(STAGING_DIR)/usr/sbin/. $(OUT_DIR)/sbin/ 2>/dev/null || true
+	@cp -a $(STAGING_DIR)/usr/lib/. $(OUT_DIR)/lib/ 2>/dev/null || true
 	@cd $(OUT_DIR) && tar -czf $(CURDIR)/firmware.tgz .
 	@echo "  OUT  firmware.tgz"
 
