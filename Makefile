@@ -1,6 +1,6 @@
 # ============================================================ #
 #  yi-hack-v5 updated package update build system
-#  (Optimized & Unified Staging/Packaging Version)
+#  (Fixed Dependency Target Macro Bug)
 # ============================================================ #
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -64,17 +64,14 @@ all: dirs openssl curl dropbear cjson mosquitto pureftpd libfuse strip-all packa
 dirs:
 	@mkdir -p $(BUILD_DIR) $(STAGING_DIR) $(STAGING_LIB) $(STAGING_BIN) $(STAGING_SBIN) $(STAGING_INC) $(OUT_DIR) $(DOWNLOAD_DIR)
 
-define download
-@if [ ! -f $(DOWNLOAD_DIR)/$(notdir $(1)) ]; then echo "  DL  $(notdir $(1))"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(1); fi
-endef
-
 # ============================================================
 #  1. OpenSSL
 # ============================================================
 OPENSSL_SRC := $(BUILD_DIR)/openssl-$(OPENSSL_VER)
 openssl: $(STAGING_LIB)/libssl.so.3
 
-$(STAGING_LIB)/libssl.so.3: $(call download,$(OPENSSL_URL))
+$(STAGING_LIB)/libssl.so.3:
+	@if [ ! -f $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VER).tar.gz ]; then echo "  DL  openssl-$(OPENSSL_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(OPENSSL_URL); fi
 	@if [ ! -d $(OPENSSL_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VER).tar.gz -C $(BUILD_DIR); fi
 	@echo "  CFG openssl-$(OPENSSL_VER)"
 	cd $(OPENSSL_SRC) && PATH="$(TC_BIN):$$PATH" CFLAGS="$(COMMON_CFLAGS)" ./Configure linux-armv4 --cross-compile-prefix="$(CROSS_PREFIX)" --prefix=$(STAGING_DIR) --openssldir=$(STAGING_DIR)/etc/ssl shared no-asm no-hw no-engine no-async no-tests no-docs -fPIC -D_GNU_SOURCE
@@ -90,7 +87,8 @@ $(STAGING_LIB)/libssl.so.3: $(call download,$(OPENSSL_URL))
 CURL_SRC := $(BUILD_DIR)/curl-$(CURL_VER)
 curl: openssl $(STAGING_BIN)/curl
 
-$(STAGING_BIN)/curl: $(call download,$(CURL_URL))
+$(STAGING_BIN)/curl:
+	@if [ ! -f $(DOWNLOAD_DIR)/curl-$(CURL_VER).tar.gz ]; then echo "  DL  curl-$(CURL_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(CURL_URL); fi
 	@if [ ! -d $(CURL_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/curl-$(CURL_VER).tar.gz -C $(BUILD_DIR); fi
 	@echo "  CFG curl-$(CURL_VER)"
 	cd $(CURL_SRC) && CC="$(CC)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(COMMON_CFLAGS) -I$(STAGING_INC)" LDFLAGS="$(COMMON_LDFLAGS)" PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" ./configure --host=$(HOST_TRIPLE) --prefix=$(STAGING_DIR) --with-openssl=$(STAGING_DIR) --disable-shared --enable-static --disable-ldap --disable-manual --disable-verbose --without-libpsl --without-libidn2 --without-brotli --without-zstd --disable-ftp --disable-file --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-rtsp --disable-mqtt
@@ -105,7 +103,8 @@ $(STAGING_BIN)/curl: $(call download,$(CURL_URL))
 DROPBEAR_SRC := $(BUILD_DIR)/dropbear-$(DROPBEAR_VER)
 dropbear: openssl $(STAGING_SBIN)/dropbear
 
-$(STAGING_SBIN)/dropbear: $(call download,$(DROPBEAR_URL))
+$(STAGING_SBIN)/dropbear:
+	@if [ ! -f $(DOWNLOAD_DIR)/dropbear-$(DROPBEAR_VER).tar.bz2 ]; then echo "  DL  dropbear-$(DROPBEAR_VER).tar.bz2"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(DROPBEAR_URL); fi
 	@if [ ! -d $(DROPBEAR_SRC) ]; then tar -xjf $(DOWNLOAD_DIR)/dropbear-$(DROPBEAR_VER).tar.bz2 -C $(BUILD_DIR); fi
 	@if [ -f patches/dropbear-uclibc-compat.patch ]; then patch -N -p1 -d $(DROPBEAR_SRC) < patches/dropbear-uclibc-compat.patch || true; fi
 	@echo "  CFG dropbear-$(DROPBEAR_VER)"
@@ -125,7 +124,8 @@ CJSON_SRC   := $(BUILD_DIR)/cJSON-$(CJSON_VER)
 CJSON_BUILD := $(BUILD_DIR)/cJSON-$(CJSON_VER)-build
 cjson: $(STAGING_LIB)/libcjson.a
 
-$(STAGING_LIB)/libcjson.a: $(call download,$(CJSON_URL))
+$(STAGING_LIB)/libcjson.a:
+	@if [ ! -f $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz ]; then echo "  DL  v$(CJSON_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(CJSON_URL); fi
 	@if [ ! -d $(CJSON_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz -C $(BUILD_DIR); fi
 	@mkdir -p $(CJSON_BUILD)
 	@echo "  CFG cJSON-$(CJSON_VER)"
@@ -150,7 +150,8 @@ MOSQUITTO_BUILD_DIR := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)-build
 
 mosquitto: $(STAGING_DIR)/usr/lib/libmosquitto.so.1
 
-$(STAGING_DIR)/usr/lib/libmosquitto.so.1: $(call download,$(MOSQUITTO_URL))
+$(STAGING_DIR)/usr/lib/libmosquitto.so.1:
+	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo "  DL  v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
 	@if [ ! -d $(MOSQUITTO_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR); fi
 	@echo "Configuring Mosquitto..."
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -186,7 +187,8 @@ mosquitto-clean:
 PUREFTPD_SRC := $(BUILD_DIR)/pure-ftpd-$(PUREFTPD_VER)
 pureftpd: openssl $(STAGING_SBIN)/pure-ftpd
 
-$(STAGING_SBIN)/pure-ftpd: $(call download,$(PUREFTPD_URL))
+$(STAGING_SBIN)/pure-ftpd:
+	@if [ ! -f $(DOWNLOAD_DIR)/pure-ftpd-$(PUREFTPD_VER).tar.gz ]; then echo "  DL  pure-ftpd-$(PUREFTPD_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(PUREFTPD_URL); fi
 	@if [ ! -d $(PUREFTPD_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/pure-ftpd-$(PUREFTPD_VER).tar.gz -C $(BUILD_DIR); fi
 	@echo "  CFG pure-ftpd-$(PUREFTPD_VER)"
 	cd $(PUREFTPD_SRC) && CC="$(CC)" AR="$(AR)" RANLIB="$(RANLIB)" CFLAGS="$(COMMON_CFLAGS) -I$(STAGING_INC)" LDFLAGS="$(COMMON_LDFLAGS)" ./configure --host=$(HOST_TRIPLE) --prefix=$(STAGING_DIR) --sysconfdir=/tmp/sd/yi-hack-v5/etc --without-ldap --without-mysql --without-pgsql --without-pam --without-extauth --with-tls --with-openssl=$(STAGING_DIR) --without-bonjour --without-inetd --with-privsep --without-capabilities
@@ -202,7 +204,8 @@ LIBFUSE_SRC   := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)
 LIBFUSE_BUILD := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)-build
 libfuse: $(STAGING_LIB)/libfuse3.so.3
 
-$(STAGING_LIB)/libfuse3.so.3: $(call download,$(LIBFUSE_URL))
+$(STAGING_LIB)/libfuse3.so.3:
+	@if [ ! -f $(DOWNLOAD_DIR)/fuse-$(LIBFUSE_VER).tar.gz ]; then echo "  DL  fuse-$(LIBFUSE_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(LIBFUSE_URL); fi
 	@if [ ! -d $(LIBFUSE_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/fuse-$(LIBFUSE_VER).tar.gz -C $(BUILD_DIR); fi
 	@mkdir -p $(LIBFUSE_BUILD)
 	@echo "  CFG libfuse-$(LIBFUSE_VER)"
