@@ -1,6 +1,6 @@
 # ============================================================ #
 #  yi-hack-v5 updated package update build system
-#  (Fixed Dependency Target Macro Bug)
+#  (Fully Unified, Fixed Dependencies & CMake OpenSSL Paths)
 # ============================================================ #
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -159,6 +159,10 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/scripts/hisiv300.cmake \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=$(STAGING_DIR)/usr \
+		-DOPENSSL_ROOT_DIR=$(STAGING_DIR) \
+		-DOPENSSL_INCLUDE_DIR=$(STAGING_DIR)/include \
+		-DOPENSSL_CRYPTO_LIBRARY=$(STAGING_DIR)/lib/libcrypto.so \
+		-DOPENSSL_SSL_LIBRARY=$(STAGING_DIR)/lib/libssl.so \
 		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
 		-DWITH_TESTING=OFF \
 		-DWITH_TLS=ON \
