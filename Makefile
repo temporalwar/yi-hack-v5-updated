@@ -1,6 +1,6 @@
 # ============================================================ #
 #  yi-hack-v5 updated package update build system
-#  (Fully Unified, Fixed Dependencies & CMake OpenSSL Paths)
+#  (Fully Unified, Pristine Cache Purge & Toolchain Overrides)
 # ============================================================ #
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -127,6 +127,7 @@ cjson: $(STAGING_LIB)/libcjson.a
 $(STAGING_LIB)/libcjson.a:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz ]; then echo "  DL  v$(CJSON_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(CJSON_URL); fi
 	@if [ ! -d $(CJSON_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz -C $(BUILD_DIR); fi
+	@rm -rf $(CJSON_BUILD)
 	@mkdir -p $(CJSON_BUILD)
 	@echo "  CFG cJSON-$(CJSON_VER)"
 	cd $(CJSON_BUILD) && cmake $(CJSON_SRC) \
@@ -139,6 +140,7 @@ $(STAGING_LIB)/libcjson.a:
 		-DBUILD_STATIC_LIBS=ON
 	@echo "  BUILD cJSON-$(CJSON_VER)"
 	$(MAKE) -C $(CJSON_BUILD) -j$(shell nproc)
+	@echo "  INSTALL cJSON-$(CJSON_VER)"
 	$(MAKE) -C $(CJSON_BUILD) install
 	@echo "  OK cJSON-$(CJSON_VER)"
 
@@ -154,6 +156,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo "  DL  v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
 	@if [ ! -d $(MOSQUITTO_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR); fi
 	@echo "Configuring Mosquitto..."
+	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
 	cd $(MOSQUITTO_BUILD_DIR) && cmake \
 		-DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/scripts/hisiv300.cmake \
@@ -166,6 +169,8 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DCJSON_INCLUDE_DIR=$(STAGING_INC) \
 		-DCJSON_LIBRARY=$(STAGING_LIB)/libcjson.a \
 		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
+		-D_CMakeLTOTest_CXX_WORKS=TRUE \
+		-D_CMakeLTOTest_C_WORKS=TRUE \
 		-DWITH_TESTING=OFF \
 		-DWITH_DOCS=OFF \
 		-DWITH_TLS=ON \
@@ -180,6 +185,13 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@echo "Installing Mosquitto to Staging..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) install
 	@echo "OK mosquitto-$(MOSQUITTO_VER)"
+
+.PHONY: mosquitto-clean
+mosquitto-clean:
+	@echo "Cleaning Mosquitto..."
+	rm -rf $(MOSQUITTO_BUILD_DIR) $(MOSQUITTO_SRC)
+	rm -f $(STAGING_DIR)/usr/lib/libmosquitto.so*
+	rm -f $(STAGING_DIR)/usr/sbin/mosquitto
 
 # ============================================================
 #  6. Pure-FTPd
@@ -207,11 +219,13 @@ libfuse: $(STAGING_LIB)/libfuse3.so.3
 $(STAGING_LIB)/libfuse3.so.3:
 	@if [ ! -f $(DOWNLOAD_DIR)/fuse-$(LIBFUSE_VER).tar.gz ]; then echo "  DL  fuse-$(LIBFUSE_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(LIBFUSE_URL); fi
 	@if [ ! -d $(LIBFUSE_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/fuse-$(LIBFUSE_VER).tar.gz -C $(BUILD_DIR); fi
+	@rm -rf $(LIBFUSE_BUILD)
 	@mkdir -p $(LIBFUSE_BUILD)
 	@echo "  CFG libfuse-$(LIBFUSE_VER)"
 	cd $(LIBFUSE_BUILD) && PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" CC="$(CC)" CFLAGS="$(COMMON_CFLAGS)" LDFLAGS="$(COMMON_LDFLAGS)" meson setup $(LIBFUSE_SRC) --cross-file $(CURDIR)/scripts/hisiv300-meson.txt --prefix=$(STAGING_DIR) --buildtype=minsize -Ddefault_library=shared -Dexamples=false -Dtests=false -Duseroot=false -Dutils=false
 	@echo "  BUILD libfuse-$(LIBFUSE_VER)"
 	ninja -C $(LIBFUSE_BUILD)
+	@echo "  INSTALL libfuse-$(LIBFUSE_VER)"
 	ninja -C $(LIBFUSE_BUILD) install
 	@echo "  OK libfuse-$(LIBFUSE_VER)"
 
