@@ -1,5 +1,6 @@
 # ============================================================ #
 #  yi-hack-v5 updated package update build system
+#  (Optimized Lightweight Pure C Client Implementation)
 # ============================================================ #
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ OPENSSL_VER   := 3.3.7
 CURL_VER      := 8.20.0
 DROPBEAR_VER  := 2026.91
 CJSON_VER     := 1.7.18
-MOSQUITTO_VER := 2.1.2
+MOSQUITTO_VER := 1.6.15
 PUREFTPD_VER  := 1.0.54
 LIBFUSE_VER   := 3.18.2
 
@@ -144,7 +145,7 @@ $(STAGING_LIB)/libcjson.a:
 	@echo "  OK cJSON-$(CJSON_VER)"
 
 # ============================================================
-#  5. Mosquitto
+#  5. Mosquitto (v1.6.15 Pure C Low-Memory Deployment)
 # ============================================================
 MOSQUITTO_SRC       := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)
 MOSQUITTO_BUILD_DIR := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)-build
@@ -155,7 +156,6 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo "  DL  v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
 	@rm -rf $(BUILD_DIR)/mosquitto*
 	@tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR)
-	@sed -i 's/find_package(GTest)/# find_package(GTest)/g' $(MOSQUITTO_SRC)/CMakeLists.txt
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -167,11 +167,9 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DOPENSSL_INCLUDE_DIR=$(STAGING_DIR)/include \
 		-DOPENSSL_CRYPTO_LIBRARY=$(STAGING_DIR)/lib/libcrypto.so \
 		-DOPENSSL_SSL_LIBRARY=$(STAGING_DIR)/lib/libssl.so \
-		-DCJSON_INCLUDE_DIR=$(STAGING_INC) \
-		-DCJSON_LIBRARY=$(STAGING_LIB)/libcjson.a \
 		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
-		-DBUILD_TESTING=OFF \
-		-DWITH_TESTING=OFF \
+		-DWITH_STATIC_LIBRARIES=OFF \
+		-DWITH_PIC=ON \
 		-DWITH_DOCS=OFF \
 		-DWITH_BROKER=OFF \
 		-DWITH_APPS=OFF \
@@ -191,7 +189,6 @@ mosquitto-clean:
 	@echo "Cleaning Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR) $(MOSQUITTO_SRC)
 	rm -f $(STAGING_DIR)/usr/lib/libmosquitto.so*
-	rm -f $(STAGING_DIR)/usr/sbin/mosquitto
 
 # ============================================================
 #  6. Pure-FTPd
