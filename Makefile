@@ -37,13 +37,13 @@ COMMON_LDFLAGS  := -Wl,--gc-sections -L$(STAGING_LIB) -L$(SYSROOT)/armv5te_arm9_
 PKG_CONFIG_PATH := $(STAGING_LIB)/pkgconfig
 
 # ── Package versions ───────────────────────────────────────────────────────
-OPENSSL_VER   := 3.3.2
+OPENSSL_VER   := 3.3.7
 CURL_VER      := 8.20.0
-DROPBEAR_VER  := 2025.89
+DROPBEAR_VER  := 2026.91
 CJSON_VER     := 1.7.18
-MOSQUITTO_VER := 2.1.0
-PUREFTPD_VER  := 1.0.52
-LIBFUSE_VER   := 3.18.1
+MOSQUITTO_VER := 2.1.2
+PUREFTPD_VER  := 1.0.54
+LIBFUSE_VER   := 3.18.2
 
 # ── Download URLs ──────────────────────────────────────────────────────────
 OPENSSL_URL   := https://github.com/openssl/openssl/releases/download/openssl-$(OPENSSL_VER)/openssl-$(OPENSSL_VER).tar.gz
@@ -187,4 +187,41 @@ $(STAGING_SBIN)/pure-ftpd:
 # ============================================================
 #  7. libfuse3
 # ============================================================
-LIBFUSE_SRC   := $(BUILD_DIR)/fuse-$(LIBFUSE_VER
+LIBFUSE_SRC   := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)
+LIBFUSE_BUILD := $(BUILD_DIR)/fuse-$(LIBFUSE_VER)-build
+
+libfuse: $(STAGING_LIB)/libfuse3.so.3
+
+$(STAGING_LIB)/libfuse3.so.3:
+	$(call download,$(LIBFUSE_URL))
+	@if [ ! -d $(LIBFUSE_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/fuse-$(LIBFUSE_VER).tar.gz -C $(BUILD_DIR); fi
+	@mkdir -p $(LIBFUSE_BUILD)
+	@echo "  CFG libfuse-$(LIBFUSE_VER)"
+	cd $(LIBFUSE_BUILD) && PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" CC="$(CC)" CFLAGS="$(COMMON_CFLAGS)" LDFLAGS="$(COMMON_LDFLAGS)" meson setup $(LIBFUSE_SRC) --cross-file $(CURDIR)/scripts/hisiv300-meson.txt --prefix=$(STAGING_DIR) --buildtype=minsize -Ddefault_library=shared -Dexamples=false -Dtests=false -Duseroot=false -Dutils=false
+	@echo "  BUILD libfuse-$(LIBFUSE_VER)"
+	ninja -C $(LIBFUSE_BUILD)
+	ninja -C $(LIBFUSE_BUILD) install
+	@echo "  OK libfuse-$(LIBFUSE_VER)"
+
+# ============================================================
+#  Strip and package
+# ============================================================
+strip-all:
+	@echo "  STRIP binaries"
+	@find $(STAGING_BIN) $(STAGING_SBIN) -type f -exec $(STRIP) --strip-unneeded {} \; 2>/dev/null || true
+	@find $(STAGING_LIB) -name "*.so*" -type f -exec $(STRIP) --strip-unneeded {} \; 2>/dev/null || true
+
+package:
+	@echo "  PKG  firmware.tgz"
+	@mkdir -p $(OUT_DIR)/bin $(OUT_DIR)/sbin $(OUT_DIR)/lib
+	@cp -a $(STAGING_BIN)/. $(OUT_DIR)/bin/ 2>/dev/null || true
+	@cp -a $(STAGING_SBIN)/. $(OUT_DIR)/sbin/ 2>/dev/null || true
+	@cp -a $(STAGING_LIB)/. $(OUT_DIR)/lib/ 2>/dev/null || true
+	@cd $(OUT_DIR) && tar -czf $(CURDIR)/firmware.tgz .
+	@echo "  OUT  firmware.tgz"
+
+clean:
+	rm -rf $(BUILD_DIR) $(STAGING_DIR) $(OUT_DIR)
+
+distclean: clean
+	rm -rf $(DOWNLOAD_DIR)
