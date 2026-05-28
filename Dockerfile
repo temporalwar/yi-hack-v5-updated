@@ -9,12 +9,21 @@ RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
     build-essential autoconf automake libtool pkg-config \
     curl wget ca-certificates git \
-    cmake \
     bzip2 xz-utils unzip file \
     libssl-dev zlib1g-dev \
     python3 python3-pip python3-setuptools \
     libc6:i386 libncurses5:i386 libstdc++6:i386 zlib1g:i386 \
     && rm -rf /var/lib/apt/lists/*
+
+# ── Upgrade CMake ──────────────────────────────────────────────────────────
+# Ubuntu 18.04 ships CMake 3.10.2 — mosquitto 2.1.x requires 3.18+
+# Install CMake 3.25.3 directly from Kitware
+RUN wget -q https://github.com/Kitware/CMake/releases/download/v3.25.3/cmake-3.25.3-linux-x86_64.sh \
+    -O /tmp/cmake.sh && \
+    chmod +x /tmp/cmake.sh && \
+    /tmp/cmake.sh --skip-license --prefix=/usr/local && \
+    rm /tmp/cmake.sh && \
+    cmake --version
 
 # ── Fix Python 3.6 pip environment requirements ───────────────────────────
 # Install an older version of setuptools and wheel so meson can build from source
@@ -34,7 +43,7 @@ RUN pip3 show ninja && \
 # Full prefix: arm-hisiv300-linux-uclibcgnueabi-
 RUN mkdir -p /opt/hisi-linux/x86-arm && \
     curl -fL "https://github.com/OpenIPC/toolchains/releases/download/v1/arm-hisiv300-linux.tar.bz2" \
-         -o /tmp/tc.tar.bz2 && \
+    -o /tmp/tc.tar.bz2 && \
     tar -xjf /tmp/tc.tar.bz2 -C /opt/hisi-linux/x86-arm/ && \
     rm /tmp/tc.tar.bz2
 
@@ -44,6 +53,8 @@ ENV PATH="${TC_BIN}:${PATH}"
 # ── Verify toolchain ───────────────────────────────────────────────────────
 RUN echo "=== Toolchain ===" && \
     ${TC_BIN}/arm-hisiv300-linux-uclibcgnueabi-gcc --version && \
+    echo "=== CMake ===" && \
+    cmake --version && \
     echo "=== Meson ===" && \
     meson --version && \
     echo "=== Ninja ===" && \
@@ -51,6 +62,7 @@ RUN echo "=== Toolchain ===" && \
     echo "=== All OK ==="
 
 WORKDIR /build
+
 COPY Makefile .
 COPY scripts/ scripts/
 COPY patches/ patches/
