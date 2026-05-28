@@ -183,7 +183,7 @@ $(STAGING_LIB)/libmosquitto.so.1:
 		-DWITH_TLS=ON \
 		-DWITH_TLS_PSK=OFF \
 		-DWITH_THREADING=ON \
-		-DDOCUMENTATION=OFF \
+		-DWITH_DOCS=OFF \
 		-DWITH_STATIC_LIBRARIES=OFF \
 		-DWITH_SHARED_LIBRARIES=ON
 	@echo "  BUILD mosquitto-$(MOSQUITTO_VER)"
@@ -191,7 +191,6 @@ $(STAGING_LIB)/libmosquitto.so.1:
 	$(MAKE) -C $(MOSQUITTO_BUILD) install
 	@if [ ! -f $(STAGING_LIB)/libmosquitto.so.1 ]; then ln -sf libmosquitto.so.$(MOSQUITTO_VER) $(STAGING_LIB)/libmosquitto.so.1; fi
 	@echo "  OK mosquitto-$(MOSQUITTO_VER)"
-
 # ============================================================
 #  6. Pure-FTPd
 # ============================================================
