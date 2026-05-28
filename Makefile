@@ -1,6 +1,5 @@
 # ============================================================ #
 #  yi-hack-v5 updated package update build system
-#  (Fully Unified, Pristine Cache Purge & Toolchain Overrides)
 # ============================================================ #
 
 # ── Toolchain ─────────────────────────────────────────────────────────────
@@ -156,7 +155,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo "  DL  v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
 	@rm -rf $(BUILD_DIR)/mosquitto*
 	@tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR)
-	@find $(BUILD_DIR) -name "CMakeLists.txt" -path "*/mosquitto*/*" -exec sed -i 's/find_package(GTest)/# find_package(GTest)/g' {} \;
+	@sed -i 's/find_package(GTest)/# find_package(GTest)/g' $(MOSQUITTO_SRC)/CMakeLists.txt
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -180,12 +179,19 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DWITH_TLS=ON \
 		-DWITH_TLS_PSK=ON \
 		-DWITH_EC=ON \
-		$$(find $(BUILD_DIR) -maxdepth 1 -type d -name "mosquitto*")
+		$(MOSQUITTO_SRC)
 	@echo "Building Mosquitto..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) -j$(shell nproc)
 	@echo "Installing Mosquitto to Staging..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) install
 	@echo "OK mosquitto-$(MOSQUITTO_VER)"
+
+.PHONY: mosquitto-clean
+mosquitto-clean:
+	@echo "Cleaning Mosquitto..."
+	rm -rf $(MOSQUITTO_BUILD_DIR) $(MOSQUITTO_SRC)
+	rm -f $(STAGING_DIR)/usr/lib/libmosquitto.so*
+	rm -f $(STAGING_DIR)/usr/sbin/mosquitto
 
 # ============================================================
 #  6. Pure-FTPd
