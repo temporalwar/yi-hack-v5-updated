@@ -2,39 +2,102 @@ name: Build and Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
   workflow_dispatch:
 
-# THIS IS THE FIX FOR PERMISSIONS:
 permissions:
-  contents: write # This allows the action to create releases and push files
+  contents: write
 
-# THIS IS THE FIX FOR THE NODE 20 WARNING:
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
+
+  lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Package Firmware
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          echo "=== Linting script/ ==="
+          find script/ -name "*.sh" -exec shellcheck -S warning \
+            -e SC2039 -e SC2169 -e SC2148 {} \; 2>&1 | tee lint-results.txt || true
+
+          echo "=== Linting www/cgi-bin/ ==="
+          find www/cgi-bin/ -name "*.sh" -exec shellcheck -S warning \
+            -e SC2039 -e SC2169 -e SC2148 {} \; 2>&1 | tee -a lint-results.txt || true
+
+          echo "=== Lint complete ==="
+          cat lint-results.txt
+
+      - name: Upload lint results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-results
+          path: lint-results.txt
+          retention-days: 7
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    needs: lint
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: yi-hack-builder:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Run cross-compile build
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -v "${{ github.workspace }}/output:/build/output" \
+            yi-hack-builder:latest
+
+      - name: Verify build output
+        run: |
+          echo "=== Build output ==="
+          ls -lh output/
+          test -n "$(ls -A output/)" || (echo "ERROR: Build produced no output" && exit 1)
+          echo "Build verified OK"
+
+      - name: Package firmware
         run: |
           mkdir -p ${{ github.workspace }}/release_package
-          # Sync files (excluding git/github folders)
-          rsync -av --exclude='.git' --exclude='.github' --exclude='release_package' . ${{ github.workspace }}/release_package/
-          # Create the tar.gz
-          tar -czf yi-hack-v5-updated.tar.gz -C ${{ github.workspace }}/release_package .
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: yi-hack-v5-updated.tar.gz
-          tag_name: latest
-          name: Latest Build
-          body: "Automated build of yi-hack-v5-updated. Extract the contents to your SD card."
-          make_latest: true # This makes it the "Latest" release automatically
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          rsync -av --exclude='.git' --exclude='.github' --exclude='release_package' \
+            --exclude='build' --exclude='staging' --exclude='downloads' \
+            . ${{ github.workspace }}/release_package/
+          cp -r output/. ${{ github.workspace }}/release_package/yi-hack-v5/bin/ 2>/dev/null || true
+          tar -czf yi-hack-
