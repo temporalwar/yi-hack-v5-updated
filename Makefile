@@ -154,10 +154,9 @@ mosquitto: $(STAGING_DIR)/usr/lib/libmosquitto.so.1
 
 $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo "  DL  v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
-	@if [ ! -d $(MOSQUITTO_SRC) ]; then \
-		tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR); \
-		sed -i 's/find_package(GTest)/# find_package(GTest)/g' $(MOSQUITTO_SRC)/CMakeLists.txt; \
-	fi
+	@rm -rf $(MOSQUITTO_SRC)
+	@tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR)
+	@sed -i 's/find_package(GTest)/# find_package(GTest)/g' $(MOSQUITTO_SRC)/CMakeLists.txt
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -172,6 +171,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DCJSON_INCLUDE_DIR=$(STAGING_INC) \
 		-DCJSON_LIBRARY=$(STAGING_LIB)/libcjson.a \
 		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
+		-DBUILD_TESTING=OFF \
 		-DWITH_TESTING=OFF \
 		-DWITH_DOCS=OFF \
 		-DWITH_BROKER=OFF \
