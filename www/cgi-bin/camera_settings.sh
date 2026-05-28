@@ -20,6 +20,20 @@ do
             ipc_cmd -t on
         fi
         sed -i "s/^SWITCH_ON=.*/SWITCH_ON=$VAL/" $CONF_FILE
+    elif [ "$CONF" == "motion_detection" ] ; then
+        if [ "$VAL" == "no" ] ; then
+            ipc_cmd -O off
+        else
+            ipc_cmd -O on
+        fi
+        sed -i "s/^MOTION_DETECTION=.*/MOTION_DETECTION=$VAL/" $CONF_FILE
+    elif [ "$CONF" == "ai_human_detection" ] ; then
+        if [ "$VAL" == "no" ] ; then
+            ipc_cmd -a off
+        else
+            ipc_cmd -a on
+        fi
+        sed -i "s/^AI_HUMAN_DETECTION=.*/AI_HUMAN_DETECTION=$VAL/" $CONF_FILE
     elif [ "$CONF" == "save_video_on_motion" ] ; then
         if [ "$VAL" == "no" ] ; then
             ipc_cmd -v always
