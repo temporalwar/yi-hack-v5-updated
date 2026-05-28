@@ -154,45 +154,51 @@ $(STAGING_LIB)/libcjson.a:
 	$(MAKE) -C $(CJSON_BUILD) install
 	@echo "  OK cJSON-$(CJSON_VER)"
 
-# ============================================================
-#  5. Mosquitto
-# ============================================================
-MOSQUITTO_SRC   := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)
-MOSQUITTO_BUILD := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)-build
+###############################################################################
+# 5. Mosquitto Build Target
+###############################################################################
 
-mosquitto: openssl cjson $(STAGING_LIB)/libmosquitto.so.1
+MOSQUITTO_DIR = $(BUILD_DIR)/mosquitto-2.1.2
+MOSQUITTO_BUILD_DIR = $(MOSQUITTO_DIR)-build
 
-$(STAGING_LIB)/libmosquitto.so.1:
-	$(call download,$(MOSQUITTO_URL))
-	@if [ ! -d $(MOSQUITTO_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR); fi
-	@mkdir -p $(MOSQUITTO_BUILD)
-	@echo "  CFG mosquitto-$(MOSQUITTO_VER)"
-	cd $(MOSQUITTO_BUILD) && cmake $(MOSQUITTO_SRC) \
-		-DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/scripts/hisiv300.cmake \
-		-DCMAKE_INSTALL_PREFIX=$(STAGING_DIR) \
-		-DCMAKE_BUILD_TYPE=MinSizeRel \
-		-DOPENSSL_ROOT_DIR=$(STAGING_DIR) \
-		-DOPENSSL_CRYPTO_LIBRARY=$(STAGING_LIB)/libcrypto.so \
-		-DOPENSSL_SSL_LIBRARY=$(STAGING_LIB)/libssl.so \
-		-DOPENSSL_INCLUDE_DIR=$(STAGING_INC) \
-		-DCJSON_INCLUDE_DIR=$(STAGING_INC) \
-		-DCJSON_LIBRARY=$(STAGING_LIB)/libcjson.a \
-		-DWITH_BROKER=OFF \
-		-DWITH_APPS=ON \
-		-DWITH_PLUGINS=OFF \
-		-DWITH_TLS=ON \
-		-DWITH_TLS_PSK=OFF \
-		-DWITH_THREADING=ON \
-		-DWITH_DOCS=OFF \
-		-DWITH_TESTING=OFF \
+.PHONY: mosquitto
+mosquitto: $(STAGING_DIR)/usr/lib/libmosquitto.so.1
+
+$(STAGING_DIR)/usr/lib/libmosquitto.so.1:
+	@echo "Configuring Mosquitto..."
+	mkdir -p $(MOSQUITTO_BUILD_DIR)
+	cd $(MOSQUITTO_BUILD_DIR) && $(CONFIGURE_ENV) cmake \
+		-DCMAKE_TOOLCHAIN_FILE=$(BUILD_DIR)/toolchain.cmake \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
-		-DWITH_STATIC_LIBRARIES=OFF \
-		-DWITH_SHARED_LIBRARIES=ON
-	@echo "  BUILD mosquitto-$(MOSQUITTO_VER)"
-	$(MAKE) -C $(MOSQUITTO_BUILD) -j$(shell nproc)
-	$(MAKE) -C $(MOSQUITTO_BUILD) install
-	@if [ ! -f $(STAGING_LIB)/libmosquitto.so.1 ]; then ln -sf libmosquitto.so.$(MOSQUITTO_VER) $(STAGING_LIB)/libmosquitto.so.1; fi
-	@echo "  OK mosquitto-$(MOSQUITTO_VER)"
+		-DWITH_TESTING=OFF \
+		-DWITH_TLS=ON \
+		-DWITH_TLS_PSK=ON \
+		-DWITH_EC=ON \
+		-DWITH_BROKER=ON \
+		-DWITH_APPS=OFF \
+		-DWITH_PLUGINS=OFF \
+		$(MOSQUITTO_DIR)
+	
+	@echo "Building Mosquitto..."
+	$(MAKE) -C $(MOSQUITTO_BUILD_DIR)
+	
+	@echo "Installing Mosquitto to Staging..."
+	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) DESTDIR=$(STAGING_DIR) install
+	
+	@echo "Copying runtime files to Target..."
+	mkdir -p $(TARGET_DIR)/usr/lib
+	mkdir -p $(TARGET_DIR)/usr/sbin
+	cp -d $(STAGING_DIR)/usr/lib/libmosquitto.so* $(TARGET_DIR)/usr/lib/
+	cp $(STAGING_DIR)/usr/sbin/mosquitto $(TARGET_DIR)/usr/sbin/
+
+.PHONY: mosquitto-clean
+mosquitto-clean:
+	@echo "Cleaning Mosquitto..."
+	rm -rf $(MOSQUITTO_BUILD_DIR)
+	rm -f $(TARGET_DIR)/usr/lib/libmosquitto.so*
+	rm -f $(TARGET_DIR)/usr/sbin/mosquitto
 
 # ============================================================
 #  6. Pure-FTPd
