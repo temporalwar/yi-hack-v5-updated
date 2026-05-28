@@ -163,6 +163,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/scripts/hisiv300.cmake \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=$(STAGING_DIR)/usr \
+		-DCMAKE_C_FLAGS="$(COMMON_CFLAGS) -Dno_malloc_usable_size" \
 		-DOPENSSL_ROOT_DIR=$(STAGING_DIR) \
 		-DOPENSSL_INCLUDE_DIR=$(STAGING_DIR)/include \
 		-DOPENSSL_CRYPTO_LIBRARY=$(STAGING_DIR)/lib/libcrypto.so \
@@ -171,6 +172,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DWITH_STATIC_LIBRARIES=OFF \
 		-DWITH_PIC=ON \
 		-DWITH_DOCS=OFF \
+		-DWITH_THREADING=OFF \
 		-DWITH_BROKER=OFF \
 		-DWITH_APPS=OFF \
 		-DWITH_PLUGINS=OFF \
@@ -183,12 +185,6 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@echo "Installing Mosquitto to Staging..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) install
 	@echo "OK mosquitto-$(MOSQUITTO_VER)"
-
-.PHONY: mosquitto-clean
-mosquitto-clean:
-	@echo "Cleaning Mosquitto..."
-	rm -rf $(MOSQUITTO_BUILD_DIR) $(MOSQUITTO_SRC)
-	rm -f $(STAGING_DIR)/usr/lib/libmosquitto.so*
 
 # ============================================================
 #  6. Pure-FTPd
