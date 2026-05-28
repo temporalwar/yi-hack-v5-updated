@@ -154,9 +154,9 @@ mosquitto: $(STAGING_DIR)/usr/lib/libmosquitto.so.1
 
 $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo "  DL  v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
-	@rm -rf $(MOSQUITTO_SRC)
+	@rm -rf $(BUILD_DIR)/mosquitto*
 	@tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR)
-	@sed -i 's/find_package(GTest)/# find_package(GTest)/g' $(MOSQUITTO_SRC)/CMakeLists.txt
+	@find $(BUILD_DIR) -name "CMakeLists.txt" -path "*/mosquitto*/*" -exec sed -i 's/find_package(GTest)/# find_package(GTest)/g' {} \;
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -180,7 +180,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DWITH_TLS=ON \
 		-DWITH_TLS_PSK=ON \
 		-DWITH_EC=ON \
-		$(MOSQUITTO_SRC)
+		$$(find $(BUILD_DIR) -maxdepth 1 -type d -name "mosquitto*")
 	@echo "Building Mosquitto..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) -j$(shell nproc)
 	@echo "Installing Mosquitto to Staging..."
