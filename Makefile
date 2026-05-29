@@ -40,7 +40,7 @@ DROPBEAR_VER := 2026.91
 CJSON_VER    := 1.7.18
 MOSQUITTO_VER := 1.6.15
 PUREFTPD_VER := 1.0.54
-LIBFUSE_VER  := 3.18.2
+LIBFUSE_VER  := 3.16.2
 
 # ── Download URLs ──────────────────────────────────────────────────────────
 OPENSSL_URL := https://github.com/openssl/openssl/releases/download/openssl-$(OPENSSL_VER)/openssl-$(OPENSSL_VER).tar.gz
