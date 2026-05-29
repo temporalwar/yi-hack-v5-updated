@@ -216,7 +216,7 @@ $(STAGING_LIB)/libfuse3.so.3:
 	@rm -rf $(LIBFUSE_BUILD)
 	@mkdir -p $(LIBFUSE_BUILD)
 	@echo " CFG libfuse-$(LIBFUSE_VER)"
-	cd $(LIBFUSE_BUILD) && PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" CC="" meson setup $(LIBFUSE_SRC) --cross-file $(CURDIR)/scripts/hisiv300-meson.txt --prefix=$(STAGING_DIR) --buildtype=minsize -Ddefault_library=shared -Dexamples=false -Dtests=false -Duseroot=false -Dutils=false
+	cd $(LIBFUSE_BUILD) && PKG_CONFIG_PATH="$(PKG_CONFIG_PATH)" CC="$(CC)" CFLAGS="$(COMMON_CFLAGS)" LDFLAGS="$(COMMON_LDFLAGS)" meson setup $(LIBFUSE_SRC) --cross-file $(CURDIR)/scripts/hisiv300-meson.txt --prefix=$(STAGING_DIR) --buildtype=minsize -Ddefault_library=shared -Dexamples=false -Dtests=false -Duseroot=false -Dutils=false
 	@echo " BUILD libfuse-$(LIBFUSE_VER)"
 	ninja -C $(LIBFUSE_BUILD)
 	@echo " INSTALL libfuse-$(LIBFUSE_VER)"
