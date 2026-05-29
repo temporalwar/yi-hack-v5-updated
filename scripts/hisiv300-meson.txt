@@ -12,6 +12,7 @@ c_link_args = ['-Wl,--gc-sections', '-L/build/staging/lib', '-latomic', '--sysro
 [properties]
 sys_root = '/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target'
 pkg_config_libdir = '/build/staging/lib/pkgconfig'
+needs_exe_wrapper = true
 
 [host_machine]
 system = 'linux'
