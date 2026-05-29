@@ -4,7 +4,6 @@ cpp = '/opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclibcg
 ar = '/opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclibcgnueabi-ar'
 strip = '/opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclibcgnueabi-strip'
 pkgconfig = 'pkg-config'
-exe_wrapper = 'true'
 
 [built-in options]
 c_args = ['-Os', '-mcpu=arm926ej-s', '-march=armv5te', '-mfloat-abi=soft', '-msoft-float', '-fno-short-enums', '-ffunction-sections', '-fdata-sections', '--sysroot=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target']
