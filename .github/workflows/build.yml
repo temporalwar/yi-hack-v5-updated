@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
@@ -39,7 +39,7 @@ jobs:
           cat lint-results.txt
 
       - name: Upload lint results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: lint-results
           path: lint-results.txt
@@ -51,13 +51,13 @@ jobs:
     needs: lint
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', 'Makefile') }}
@@ -100,4 +100,24 @@ jobs:
             --exclude='build' --exclude='staging' --exclude='downloads' \
             . ${{ github.workspace }}/release_package/
           cp -r output/. ${{ github.workspace }}/release_package/yi-hack-v5/bin/ 2>/dev/null || true
-          tar -czf yi-hack-
+          tar -czf yi-hack-v5-updated.tar.gz -C ${{ github.workspace }}/release_package .
+          echo "=== Package contents ==="
+          ls -lh yi-hack-v5-updated.tar.gz
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: yi-hack-v5-updated
+          path: yi-hack-v5-updated.tar.gz
+          retention-days: 7
+
+      - name: Publish rolling release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          body: Automated build of yi-hack-v5-updated. Extract the contents to your SD card.
+          files: yi-hack-v5-updated.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
