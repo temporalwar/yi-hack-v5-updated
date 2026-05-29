@@ -6,14 +6,12 @@ strip = '/opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin/arm-hisiv300-linux-uclib
 pkgconfig = 'pkg-config'
 exe_wrapper = '/bin/true'
 
-[built-in options]
-c_args = ['-Os', '-mcpu=arm926ej-s', '-march=armv5te', '-mfloat-abi=soft', '-msoft-float', '-fno-short-enums', '-ffunction-sections', '-fdata-sections', '--sysroot=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target']
-c_link_args = ['-Wl,--gc-sections', '-L/build/staging/lib', '-latomic', '--sysroot=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target']
-
 [properties]
 sys_root = '/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target'
 pkg_config_libdir = '/build/staging/lib/pkgconfig'
 needs_exe_wrapper = true
+c_args = ['-Os', '-mcpu=arm926ej-s', '-march=armv5te', '-mfloat-abi=soft', '-msoft-float', '-fno-short-enums', '-ffunction-sections', '-fdata-sections', '--sysroot=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target']
+c_link_args = ['-Wl,--gc-sections', '-L/build/staging/lib', '-latomic', '--sysroot=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/target']
 
 [host_machine]
 system = 'linux'
