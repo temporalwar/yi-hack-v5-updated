@@ -439,7 +439,8 @@ if [[ $(get_config ONVIF) == "yes" ]] ; then
     fi
 
     # Run onvif_simple_server last as it blocks
-    onvif_simple_server --conf_file $ONVIF_SRVD_CONF
+   setsid /bin/onvif_simple_server > /dev/null 2>&1 &
+onvif_simple_server --conf_file $ONVIF_SRVD_CONF
 fi
 
 framefinder $MODEL_SUFFIX &
