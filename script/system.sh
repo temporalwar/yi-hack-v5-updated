@@ -24,13 +24,9 @@ get_config()
 export LD_LIBRARY_PATH=/lib:/usr/lib:/home/lib:/home/app/locallib:/home/hisiko/hisilib:/tmp/sd/yi-hack-v5/lib:/home/yi-hack-v5/lib
 export PATH=/usr/bin:/usr/sbin:/bin:/sbin:/home/base/tools:/home/yi-hack-v5/bin:/home/app/localbin:/home/base:/tmp/sd/yi-hack-v5/bin:/tmp/sd/yi-hack-v5/sbin:/tmp/sd/yi-hack-v5/usr/bin:/tmp/sd/yi-hack-v5/usr/sbin:/home/yi-hack-v5/sbin
 
-#if [ ! -L "/var/run/utmp" ]; then
-#  ln -sf /dev/null /var/run/utmp
-#fi
-
 # Upgrade wpa_supplicant modules - after 0.4.1 baseline
 if [ -f $YI_HACK_PREFIX/wpa/wpa_supplicant_upgrade ]; then
-        ifconfig wlan0 up
+	ifconfig wlan0 up
     echo "---backing up wpa---"
     cp /home/base/tools/wpa_supplicant $YI_HACK_PREFIX/wpa/wpa_supplicant_backup
     cp /home/base/tools/wpa_cli $YI_HACK_PREFIX/wpa/wpa_cli_backup
@@ -45,7 +41,7 @@ if [ -f $YI_HACK_PREFIX/wpa/wpa_supplicant_upgrade ]; then
     reboot
     echo "---wpa upgrade done---"
 else
-        echo "---no wpa upgrade---"
+	echo "---no wpa upgrade---"
 fi
 
 #reversing symlinks
@@ -88,28 +84,30 @@ if [ -f $YI_HACK_UPGRADE_PATH/yi-hack-v5/fw_upgrade_in_progress ]; then
     exit
 fi
 
-# Update cloudAPI_fake if necessary
-if [[ "$(grep -m 3 -n '' /home/app/cloudAPI_fake | tail -n 1 | cut -d ':' -f 2 | cut -c 3-)" != "$(grep -m 3 -n '' $YI_HACK_PREFIX/script/cloudAPI_fake | tail -n 1 | cut -d ':' -f 2 | cut -c 3-)" ]]; then
-  cp -f $YI_HACK_PREFIX/script/cloudAPI_fake /home/app/
-fi
-
-# Update cloudAPI if necessary
-if [[ "$(grep -m 3 -n '' /home/app/cloudAPI | tail -n 1 | cut -d ':' -f 2 | cut -c 3-)" != "$(grep -m 3 -n '' $YI_HACK_PREFIX/script/cloudAPI | tail -n 1 | cut -d ':' -f 2 | cut -c 3-)" ]]; then
-  cp -f $YI_HACK_PREFIX/script/cloudAPI /home/app/
-fi
+# Always update cloudAPI and cloudAPI_fake from the SD card to flash.
+cp -f $YI_HACK_PREFIX/script/cloudAPI /home/app/
+cp -f $YI_HACK_PREFIX/script/cloudAPI_fake /home/app/
 
 # Manual Wi-Fi config
 if [ -f /tmp/sd/recover/configure_wifi.cfg ]; then
-        mv /tmp/sd/recover/configure_wifi.cfg /tmp/configure_wifi.cfg
-        sync
-        sh $YI_HACK_PREFIX/script/configure_wifi.sh
+	mv /tmp/sd/recover/configure_wifi.cfg /tmp/configure_wifi.cfg
+	sync
+	sh $YI_HACK_PREFIX/script/configure_wifi.sh
 fi
 
 if [ -f "/tmp/sd/recover/mtdblock2_recover.bin" ]; then
-        sync
-        sh $YI_HACK_PREFIX/script/configure_wifi.sh
+	sync
+	sh $YI_HACK_PREFIX/script/configure_wifi.sh
 fi
 $YI_HACK_PREFIX/script/check_conf.sh
+
+# Multi-WiFi support: replace stock single-network wpa_supplicant
+if [[ $(get_config WIFI_MULTI) == "yes" ]] ; then
+    if [ -f "$YI_HACK_PREFIX/etc/wpa_supplicant.conf" ]; then
+        echo "---multi-WiFi enabled, starting wifi_connect.sh---"
+        sh $YI_HACK_PREFIX/script/wifi_connect.sh
+    fi
+fi
 
 hostname -F $YI_HACK_PREFIX/etc/hostname
 
@@ -136,6 +134,12 @@ if [[ $(get_config SWAP_FILE) == "yes" ]] || [[ $MODEL_SUFFIX == "yi_dome" ]] ||
     fi
 fi
 
+# Increase network buffers for RTSP streaming stability
+sysctl -w net.core.rmem_max=524288 > /dev/null 2>&1
+sysctl -w net.core.wmem_max=524288 > /dev/null 2>&1
+sysctl -w net.core.rmem_default=524288 > /dev/null 2>&1
+sysctl -w net.core.wmem_default=524288 > /dev/null 2>&1
+
 if [[ x$(get_config USERNAME) != "x" ]] ; then
     USERNAME=$(get_config USERNAME)
     PASSWORD=$(get_config PASSWORD)
@@ -148,15 +152,7 @@ fi
 
 if [[ x$(get_config SSH_PASSWORD) != "x" ]] ; then
     SSH_PASSWORD=$(get_config SSH_PASSWORD)
-#    PASSWORD_MD5="$(echo "${SSH_PASSWORD}" | mkpasswd --method=des --stdin)"
     echo root:$SSH_PASSWORD | chpasswd --md5
-#    cp -f "/etc/passwd" "/tmp/sd/yi-hack-v5/etc/passwd"
-#    sed -i 's|^root::|root:'${PASSWORD_MD5}':|g' "/etc/passwd"
-#    sed -i 's|/root|/tmp/sd/yi-hack-v5|g' "/etc/passwd"
-#    mount --bind "/tmp/sd/yi-hack-v5/etc/passwd" "/etc/passwd"
-#    cp -f "/etc/shadow" "/tmp/sd/yi-hack-v5/etc/shadow"
-#    sed -i 's|^root::|root:'${PASSWORD_MD5}':|g' "/etc/shadow"
-#    mount --bind "/tmp/sd/yi-hack-v5/etc/shadow" "/etc/shadow"
 fi
 
 case $(get_config RTSP_PORT) in
@@ -187,7 +183,6 @@ else
 fi
 
 if [[ $(get_config NTPD) == "yes" ]] ; then
-    # Wait until all the other processes have been initialized
     sleep 5 && ntpd -p $(get_config NTP_SERVER) &
 fi
 
@@ -221,12 +216,12 @@ if [[ $(get_config DISABLE_CLOUD) == "yes" ]] ; then
             echo -ne '\x01\x00\x00\x00' | dd of=/tmp/mmap.info bs=1 seek=0 count=4 conv=notrunc
         fi
         LD_LIBRARY_PATH="/home/yi-hack-v5/lib:/lib:/home/lib:/home/app/locallib:/home/hisiko/hisilib" ./rmm &
-        sleep 8
+		sleep 8
         if [[ $(get_config REC_WITHOUT_CLOUD) == "yes" ]] ; then
             cd /home/app
             ./mp4record &
         fi
-        sleep 4
+		sleep 4
         ./cloud &
     )
 fi
@@ -251,7 +246,7 @@ if [[ $(get_config FTPD) == "yes" ]] ; then
 fi
 
 if [[ $(get_config SSHD) == "yes" ]] ; then
-    mkdir -p $YI_HACK_PREFIX/etc/dropbear
+mkdir -p $YI_HACK_PREFIX/etc/dropbear
     if [ ! -f $YI_HACK_PREFIX/etc/dropbear/dropbear_ecdsa_host_key ]; then
         dropbearkey -t ecdsa -f /tmp/dropbear_ecdsa_host_key
         mv /tmp/dropbear_ecdsa_host_key $YI_HACK_PREFIX/etc/dropbear/
@@ -260,9 +255,9 @@ if [[ $(get_config SSHD) == "yes" ]] ; then
     dropbear -R -B
 fi
 
-mqttv4 &
-
+# Fixed MQTT Start Logic
 if [[ $(get_config MQTT) == "yes" ]] ; then
+    mqttv4 &
     mqtt-config &
     $YI_HACK_PREFIX/script/conf2mqtt.sh &
 fi
@@ -290,8 +285,6 @@ RRTSP_PORT=$(get_config RTSP_PORT)
 RRTSP_USER=$USERNAME
 RRTSP_PWD=$PASSWORD
 
-# some non-working functions to be added later
-
 if [[ $(get_config RTSP) == "yes" ]] ; then
 
     if [[ $MODEL_SUFFIX == "yi_dome" ]] || [[ $MODEL_SUFFIX == "yi_home" ]] ; then
@@ -301,7 +294,6 @@ if [[ $(get_config RTSP) == "yes" ]] ; then
         HIGHWIDTH="1920"
         HIGHHEIGHT="1080"
     fi
-# The below section (except ONVIF) to be also copied to service.sh
     if [[ $(get_config RTSP_AUDIO) == "yes" ]]; then
         h264grabber -r audio -m $MODEL_SUFFIX -f &
     fi
@@ -324,9 +316,7 @@ if [[ $(get_config RTSP) == "yes" ]] ; then
         fi
     rRTSPServer -r $RRTSP_RES -a $RRTSP_AUDIO -p $RRTSP_PORT -u $RRTSP_USER -w $RRTSP_PWD &
     fi
-#Seems to be killing the resource - fixed via #153
     $YI_HACK_PREFIX/script/wd_rtsp.sh &
-#The above section (except ONVIF) to be also copied to service.sh
 fi
 
 if [[ $MODEL_SUFFIX == "yi_dome_1080p" ]] || [[ $MODEL_SUFFIX == "yi_cloud_dome_1080p" ]] ; then
@@ -337,9 +327,8 @@ else
     SERIAL_NUMBER=$(dd bs=1 count=16 skip=596 if=/tmp/mmap.info 2>/dev/null | cut -c1-16)
 fi
 
-# Ensure onvif_simple_server is on PATH (binary may be in www/onvif/ on fresh installs)
 [ ! -f "$YI_HACK_PREFIX/bin/onvif_simple_server" ] && \
-    cp "$YI_HACK_PREFIX/www/onvif/onvif_simple_server" "$YI_HACK_PREFIX/bin/onvif_simple_server" 2>/dev/null || true
+  cp "$YI_HACK_PREFIX/www/onvif/onvif_simple_server" "$YI_HACK_PREFIX/bin/onvif_simple_server" 2>/dev/null || true
 
 if [[ $(get_config ONVIF) == "yes" ]] ; then
     if [[ $(get_config ONVIF_NETIF) == "wlan0" ]] ; then
@@ -439,8 +428,7 @@ if [[ $(get_config ONVIF) == "yes" ]] ; then
     fi
 
     # Run onvif_simple_server last as it blocks
-   setsid /bin/onvif_simple_server > /dev/null 2>&1 &
-onvif_simple_server --conf_file $ONVIF_SRVD_CONF
+    setsid /bin/onvif_simple_server --conf_file $ONVIF_SRVD_CONF > /dev/null 2>&1 &
 fi
 
 framefinder $MODEL_SUFFIX &
@@ -473,12 +461,6 @@ fi
 if [ -f "$YI_HACK_PREFIX/script/mqtt_advertise/startup.sh" ]; then
     $YI_HACK_PREFIX/script/mqtt_advertise/startup.sh
 fi
-
-# Remove log files written to SD on boot containing the WiFi password
-#rm -f "/tmp/sd/log/log_first_login.tar.gz"
-#rm -f "/tmp/sd/log/log_login.tar.gz"
-#rm -f "/tmp/sd/log/log_p2p_clr.tar.gz"
-#rm -f "/tmp/sd/log/log_wifi_connected.tar.gz"
 
 if [[ $(get_config FTP_UPLOAD) == "yes" ]] ; then
     $YI_HACK_PREFIX/script/ftppush.sh start &
