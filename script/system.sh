@@ -30,7 +30,7 @@ export PATH=/usr/bin:/usr/sbin:/bin:/sbin:/home/base/tools:/home/yi-hack-v5/bin:
 
 # Upgrade wpa_supplicant modules - after 0.4.1 baseline
 if [ -f $YI_HACK_PREFIX/wpa/wpa_supplicant_upgrade ]; then
-	ifconfig wlan0 up
+        ifconfig wlan0 up
     echo "---backing up wpa---"
     cp /home/base/tools/wpa_supplicant $YI_HACK_PREFIX/wpa/wpa_supplicant_backup
     cp /home/base/tools/wpa_cli $YI_HACK_PREFIX/wpa/wpa_cli_backup
@@ -45,7 +45,7 @@ if [ -f $YI_HACK_PREFIX/wpa/wpa_supplicant_upgrade ]; then
     reboot
     echo "---wpa upgrade done---"
 else
-	echo "---no wpa upgrade---"
+        echo "---no wpa upgrade---"
 fi
 
 #reversing symlinks
@@ -100,14 +100,14 @@ fi
 
 # Manual Wi-Fi config
 if [ -f /tmp/sd/recover/configure_wifi.cfg ]; then
-	mv /tmp/sd/recover/configure_wifi.cfg /tmp/configure_wifi.cfg
-	sync
-	sh $YI_HACK_PREFIX/script/configure_wifi.sh
+        mv /tmp/sd/recover/configure_wifi.cfg /tmp/configure_wifi.cfg
+        sync
+        sh $YI_HACK_PREFIX/script/configure_wifi.sh
 fi
 
 if [ -f "/tmp/sd/recover/mtdblock2_recover.bin" ]; then
-	sync
-	sh $YI_HACK_PREFIX/script/configure_wifi.sh
+        sync
+        sh $YI_HACK_PREFIX/script/configure_wifi.sh
 fi
 $YI_HACK_PREFIX/script/check_conf.sh
 
@@ -221,12 +221,12 @@ if [[ $(get_config DISABLE_CLOUD) == "yes" ]] ; then
             echo -ne '\x01\x00\x00\x00' | dd of=/tmp/mmap.info bs=1 seek=0 count=4 conv=notrunc
         fi
         LD_LIBRARY_PATH="/home/yi-hack-v5/lib:/lib:/home/lib:/home/app/locallib:/home/hisiko/hisilib" ./rmm &
-		sleep 8
+        sleep 8
         if [[ $(get_config REC_WITHOUT_CLOUD) == "yes" ]] ; then
             cd /home/app
             ./mp4record &
         fi
-		sleep 4
+        sleep 4
         ./cloud &
     )
 fi
@@ -251,7 +251,7 @@ if [[ $(get_config FTPD) == "yes" ]] ; then
 fi
 
 if [[ $(get_config SSHD) == "yes" ]] ; then
-mkdir -p $YI_HACK_PREFIX/etc/dropbear
+    mkdir -p $YI_HACK_PREFIX/etc/dropbear
     if [ ! -f $YI_HACK_PREFIX/etc/dropbear/dropbear_ecdsa_host_key ]; then
         dropbearkey -t ecdsa -f /tmp/dropbear_ecdsa_host_key
         mv /tmp/dropbear_ecdsa_host_key $YI_HACK_PREFIX/etc/dropbear/
@@ -395,7 +395,7 @@ if [[ $(get_config ONVIF) == "yes" ]] ; then
     fi
 
     echo "#EVENT" >> $ONVIF_SRVD_CONF
-    echo "events=3" >> $ONVIF_SRVD_CONF
+    echo "events=6" >> $ONVIF_SRVD_CONF
     echo "#Event 0" >> $ONVIF_SRVD_CONF
     echo "topic=tns1:VideoSource/MotionAlarm" >> $ONVIF_SRVD_CONF
     echo "source_name=VideoSourceConfigurationToken" >> $ONVIF_SRVD_CONF
@@ -428,12 +428,13 @@ if [[ $(get_config ONVIF) == "yes" ]] ; then
     echo "input_file=/tmp/onvif_notify_server/sound_detection" >> $ONVIF_SRVD_CONF
 
     chmod 0600 $ONVIF_SRVD_CONF
-    onvif_simple_server --conf_file $ONVIF_SRVD_CONF
-    ipc2file
-    onvif_notify_server --conf_file $ONVIF_SRVD_CONF
+    onvif_simple_server --conf_file $ONVIF_SRVD_CONF &
+    mkdir -p /tmp/onvif_notify_server
+    ipc2file &
+    onvif_notify_server --conf_file $ONVIF_SRVD_CONF &
 
     if [[ $(get_config ONVIF_WSDD) == "yes" ]] ; then
-        wsd_simple_server --pid_file /var/run/wsd_simple_server.pid --if_name $ONVIF_NETIF --xaddr "http://%s$D_HTTPD_PORT/onvif/device_service" -m yi_hack -n Yi &
+        sleep 5 && wsd_simple_server --pid_file /var/run/wsd_simple_server.pid --if_name $ONVIF_NETIF --xaddr "http://%s$D_HTTPD_PORT/onvif/device_service" -m yi_hack -n Yi &
     fi
 fi
 
