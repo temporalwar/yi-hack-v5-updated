@@ -428,7 +428,8 @@ if [[ $(get_config ONVIF) == "yes" ]] ; then
     echo "input_file=/tmp/onvif_notify_server/sound_detection" >> $ONVIF_SRVD_CONF
 
     chmod 0600 $ONVIF_SRVD_CONF
-    onvif_simple_server --conf_file $ONVIF_SRVD_CONF &
+
+    # Start event pipeline before onvif_simple_server (which blocks)
     mkdir -p /tmp/onvif_notify_server
     ipc2file &
     onvif_notify_server --conf_file $ONVIF_SRVD_CONF &
@@ -436,6 +437,9 @@ if [[ $(get_config ONVIF) == "yes" ]] ; then
     if [[ $(get_config ONVIF_WSDD) == "yes" ]] ; then
         sleep 5 && wsd_simple_server --pid_file /var/run/wsd_simple_server.pid --if_name $ONVIF_NETIF --xaddr "http://%s$D_HTTPD_PORT/onvif/device_service" -m yi_hack -n Yi &
     fi
+
+    # Run onvif_simple_server last as it blocks
+    onvif_simple_server --conf_file $ONVIF_SRVD_CONF
 fi
 
 framefinder $MODEL_SUFFIX &
