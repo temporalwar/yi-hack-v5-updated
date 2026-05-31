@@ -1,6 +1,6 @@
 # yi-hack-v5-updated
 
-A security-hardened fork of [alienatedsec/yi-hack-v5](https://github.com/alienatedsec/yi-hack-v5) for the *Yi Home 1080p* camera (Hi3518ev200 chipset). This fork focuses on two things: fixing critical shell-level bugs found in the original firmware scripts, and replacing end-of-life or severely outdated bundled binaries with modern, patched versions.
+A security-hardened fork of [alienatedsec/yi-hack-v5](https://github.com/alienatedsec/yi-hack-v5) for the *Yi Home 1080p* camera (Hi3518ev200 chipset). This fork focuses on two things: fixing critical shell-level bugs found in the original firmware scripts, and replacing end-of-life or severely outdated bundled binaries with modern, patched versions. 
 
 Releases are built automatically via GitHub Actions and published as ready-to-deploy tarballs.
 
