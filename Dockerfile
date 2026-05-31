@@ -31,7 +31,7 @@ RUN pip3 install 'setuptools<58.0.0' wheel
 
 # ── Pin exact meson/ninja versions from upstream wiki ─────────────────────
 # upstream specifies meson==0.51.1 and ninja==1.9.0 explicitly
-RUN pip3 install 'meson==0.51.1' 'ninja==1.9.0'
+RUN pip3 install 'meson>=0.60.0' 'ninja==1.9.0'
 
 # ── Install ninja binary (meson needs it on PATH) ─────────────────────────
 RUN pip3 show ninja && \
