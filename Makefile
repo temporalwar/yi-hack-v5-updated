@@ -160,6 +160,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@find $(MOSQUITTO_SRC) -type f -iname "CMakeLists.txt" -exec sed -i '/[Ff][Ii][Nn][Dd]_[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*[Gg][Tt][Ee][Ss][Tt]/ s/^.*/# &/' {} \;
 	@sed -i '/add_subdirectory(test)/ s/^.*/# &/' $(MOSQUITTO_SRC)/CMakeLists.txt
 	@sed -i '/add_subdirectory(cpp)/ s/^.*/# &/' $(MOSQUITTO_SRC)/lib/CMakeLists.txt
+	@sed -i '/add_subdirectory(apps)/ s/^.*/# &/' $(MOSQUITTO_SRC)/CMakeLists.txt
 	@echo "Patching Mosquitto for uClibc compatibility..."
 	@sed -i 's/\([[:space:]]*\)open_flags |= O_NOFOLLOW;/#ifdef O_NOFOLLOW\n\1open_flags |= O_NOFOLLOW;\n#endif/' $(MOSQUITTO_SRC)/libcommon/file_common.c
 	@echo "Configuring Mosquitto..."
@@ -169,7 +170,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/scripts/hisiv300.cmake \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=$(STAGING_DIR)/usr \
-		-DCMAKE_C_FLAGS="$(COMMON_CFLAGS) -D_GNU_SOURCE -Wno-implicit-function-declaration" \
+		-DCMAKE_C_FLAGS="$(COMMON_CFLAGS) -Wno-implicit-function-declaration" \
 		-DCMAKE_EXE_LINKER_FLAGS="-latomic" \
 		-DCMAKE_SHARED_LINKER_FLAGS="-latomic" \
 		-DOPENSSL_ROOT_DIR=$(STAGING_DIR) \
@@ -185,6 +186,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DWITH_TLS=ON \
 		-DWITH_TLS_PSK=ON \
 		-DWITH_MEMORY_TRACKING=OFF \
+		-DWITH_APPS=OFF \
 		-DWITH_CLIENTS=OFF \
 		-DWITH_BROKER=OFF \
 		-DWITH_PLUGINS=OFF \
