@@ -36,7 +36,7 @@ PKG_CONFIG_PATH := $(STAGING_LIB)/pkgconfig
 # ── Package versions ───────────────────────────────────────────────────────
 OPENSSL_VER  := 3.3.7
 CURL_VER     := 8.20.0
-DROPBEAR_VER := 2026.91
+DROPBEAR_VER := 2025.89
 CJSON_VER    := 1.7.18
 MOSQUITTO_VER := 1.6.15
 PUREFTPD_VER := 1.0.54
