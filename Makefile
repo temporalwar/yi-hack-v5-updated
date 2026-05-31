@@ -34,23 +34,23 @@ COMMON_LDFLAGS := -Wl,--gc-sections -L$(STAGING_LIB) -L$(SYSROOT)/armv5te_arm9_s
 PKG_CONFIG_PATH := $(STAGING_LIB)/pkgconfig
 
 # ── Package versions ───────────────────────────────────────────────────────
-OPENSSL_VER  := 3.3.7
-CURL_VER     := 8.20.0
-DROPBEAR_VER := 2025.89
-CJSON_VER    := 1.7.18
-MOSQUITTO_VER := 1.6.15
-PUREFTPD_VER := 1.0.54
-LIBFUSE_VER  := 3.16.2
+OPENSSL_VER   := 3.3.7
+CURL_VER      := 8.20.0
+DROPBEAR_VER  := 2025.89
+CJSON_VER     := 1.7.18
+MOSQUITTO_VER := 2.1.2
+PUREFTPD_VER  := 1.0.54
+LIBFUSE_VER   := 3.18.1
 
 # ── Download URLs ──────────────────────────────────────────────────────────
-OPENSSL_URL := https://github.com/openssl/openssl/releases/download/openssl-$(OPENSSL_VER)/openssl-$(OPENSSL_VER).tar.gz
-CURL_URL := https://github.com/curl/curl/releases/download/curl-$(subst .,_,$(CURL_VER))/curl-$(CURL_VER).tar.gz
-DROPBEAR_URL := https://matt.ucc.asn.au/dropbear/releases/dropbear-$(DROPBEAR_VER).tar.bz2
-CJSON_URL := https://github.com/DaveGamble/cJSON/archive/refs/tags/v$(CJSON_VER).tar.gz
+OPENSSL_URL   := https://github.com/openssl/openssl/releases/download/openssl-$(OPENSSL_VER)/openssl-$(OPENSSL_VER).tar.gz
+CURL_URL      := https://github.com/curl/curl/releases/download/curl-$(subst .,_,$(CURL_VER))/curl-$(CURL_VER).tar.gz
+DROPBEAR_URL  := https://matt.ucc.asn.au/dropbear/releases/dropbear-$(DROPBEAR_VER).tar.bz2
+CJSON_URL     := https://github.com/DaveGamble/cJSON/archive/refs/tags/v$(CJSON_VER).tar.gz
 MOSQUITTO_URL := https://github.com/eclipse-mosquitto/mosquitto/archive/refs/tags/v$(MOSQUITTO_VER).tar.gz
-PUREFTPD_URL := https://download.pureftpd.org/pub/pure-ftpd/releases/pure-ftpd-$(PUREFTPD_VER).tar.gz
-LIBFUSE_URL := https://github.com/libfuse/libfuse/releases/download/fuse-$(LIBFUSE_VER)/fuse-$(LIBFUSE_VER).tar.gz
-DOWNLOAD_DIR := $(CURDIR)/downloads
+PUREFTPD_URL  := https://download.pureftpd.org/pub/pure-ftpd/releases/pure-ftpd-$(PUREFTPD_VER).tar.gz
+LIBFUSE_URL   := https://github.com/libfuse/libfuse/releases/download/fuse-$(LIBFUSE_VER)/fuse-$(LIBFUSE_VER).tar.gz
+DOWNLOAD_DIR  := $(CURDIR)/downloads
 
 # ── Phony targets ──────────────────────────────────────────────────────────
 .PHONY: all clean distclean dirs openssl curl dropbear cjson mosquitto pureftpd libfuse strip-all package
@@ -145,7 +145,7 @@ $(STAGING_LIB)/libcjson.a:
 	@echo " OK cJSON-$(CJSON_VER)"
 
 # ============================================================
-# 5. Mosquitto (v1.6.15 Pure C Low-Memory Deployment)
+# 5. Mosquitto (v2.1.2 Pure C Low-Memory Deployment)
 # ============================================================
 MOSQUITTO_SRC := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)
 MOSQUITTO_BUILD_DIR := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)-build
@@ -156,6 +156,8 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo " DL v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
 	@rm -rf $(BUILD_DIR)/mosquitto*
 	@tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR)
+	@echo "Patching Mosquitto CMakeLists for GTest..."
+	@sed -i 's/find_package(GTest)/# find_package(GTest)/g' $(MOSQUITTO_SRC)/CMakeLists.txt || true
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -172,20 +174,18 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DWITH_STATIC_LIBRARIES=OFF \
 		-DWITH_PIC=ON \
 		-DDOCUMENTATION=OFF \
-		-DINC_MEMTRACK=OFF \
-		-DWITH_THREADING=OFF \
-		-DWITH_BROKER=OFF \
-		-DWITH_APPS=OFF \
-		-DWITH_PLUGINS=OFF \
 		-DWITH_TLS=ON \
 		-DWITH_TLS_PSK=ON \
 		-DWITH_EC=ON \
+		-DWITH_CLIENTS=OFF \
+		-DWITH_BROKER=OFF \
+		-DWITH_PLUGINS=OFF \
 		$(MOSQUITTO_SRC)
 	@echo "Building Mosquitto..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) -j$(shell nproc)
 	@echo "Installing Mosquitto to Staging..."
 	$(MAKE) -C $(MOSQUITTO_BUILD_DIR) install
-	@echo "OK mosquitto-$(MOSQUITTO_VER)"
+	@echo " OK mosquitto-$(MOSQUITTO_VER)"
 
 # ============================================================
 # 6. Pure-FTPd
