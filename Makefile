@@ -160,6 +160,9 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@find $(MOSQUITTO_SRC) -type f -iname "CMakeLists.txt" -exec sed -i '/[Ff][Ii][Nn][Dd]_[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*[Gg][Tt][Ee][Ss][Tt]/ s/^.*/# &/' {} \;
 	@sed -i '/add_subdirectory(test)/ s/^.*/# &/' $(MOSQUITTO_SRC)/CMakeLists.txt
 	@sed -i '/add_subdirectory(cpp)/ s/^.*/# &/' $(MOSQUITTO_SRC)/lib/CMakeLists.txt
+	@echo "Patching Mosquitto for uClibc compatibility..."
+	@sed -i 's/\([[:space:]]*\)open_flags |= O_NOFOLLOW;/#ifdef O_NOFOLLOW\n\1open_flags |= O_NOFOLLOW;\n#endif/' $(MOSQUITTO_SRC)/libcommon/file_common.c
+	@grep -q "#ifdef O_NOFOLLOW" $(MOSQUITTO_SRC)/libcommon/file_common.c && echo " OK O_NOFOLLOW patched" || (echo " ERROR: O_NOFOLLOW patch did not apply" && exit 1)
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -167,7 +170,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/scripts/hisiv300.cmake \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=$(STAGING_DIR)/usr \
-		-DCMAKE_C_FLAGS="$(COMMON_CFLAGS)" \
+		-DCMAKE_C_FLAGS="$(COMMON_CFLAGS) -D_GNU_SOURCE" \
 		-DOPENSSL_ROOT_DIR=$(STAGING_DIR) \
 		-DOPENSSL_INCLUDE_DIR=$(STAGING_DIR)/include \
 		-DOPENSSL_CRYPTO_LIBRARY=$(STAGING_DIR)/lib/libcrypto.so \
