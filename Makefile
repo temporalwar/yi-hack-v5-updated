@@ -150,7 +150,7 @@ $(STAGING_LIB)/libcjson.a:
 MOSQUITTO_SRC := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)
 MOSQUITTO_BUILD_DIR := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)-build
 
-mosquitto: $(STAGING_DIR)/usr/lib/libmosquitto.so.1
+mosquitto: cjson $(STAGING_DIR)/usr/lib/libmosquitto.so.1
 
 $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo " DL v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
@@ -170,6 +170,8 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DOPENSSL_INCLUDE_DIR=$(STAGING_DIR)/include \
 		-DOPENSSL_CRYPTO_LIBRARY=$(STAGING_DIR)/lib/libcrypto.so \
 		-DOPENSSL_SSL_LIBRARY=$(STAGING_DIR)/lib/libssl.so \
+		-DCJSON_INCLUDE_DIR=$(STAGING_INC)/cjson \
+		-DCJSON_LIBRARY=$(STAGING_LIB)/libcjson.a \
 		-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
 		-DWITH_STATIC_LIBRARIES=OFF \
 		-DWITH_PIC=ON \
