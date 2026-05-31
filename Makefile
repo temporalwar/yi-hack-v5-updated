@@ -150,7 +150,7 @@ $(STAGING_LIB)/libcjson.a:
 MOSQUITTO_SRC := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)
 MOSQUITTO_BUILD_DIR := $(BUILD_DIR)/mosquitto-$(MOSQUITTO_VER)-build
 
-mosquitto: cjson $(STAGING_DIR)/usr/lib/libmosquitto.so.1
+mosquitto: openssl cjson $(STAGING_DIR)/usr/lib/libmosquitto.so.1
 
 $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo " DL v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(MOSQUITTO_URL); fi
