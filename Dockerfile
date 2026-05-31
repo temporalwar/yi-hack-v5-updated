@@ -47,6 +47,10 @@ RUN mkdir -p /opt/hisi-linux/x86-arm && \
     tar -xjf /tmp/tc.tar.bz2 -C /opt/hisi-linux/x86-arm/ && \
     rm /tmp/tc.tar.bz2
 
+# ── Inject stdatomic.h Polyfill ───────────────────────────────────────────
+RUN curl -sSL https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-4.9.4/gcc/ginclude/stdatomic.h \
+    -o /opt/hisi-linux/x86-arm/arm-hisiv300-linux/target/usr/include/stdatomic.h
+
 ENV TC_BIN=/opt/hisi-linux/x86-arm/arm-hisiv300-linux/bin
 ENV PATH="${TC_BIN}:${PATH}"
 
