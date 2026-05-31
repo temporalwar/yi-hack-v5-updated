@@ -157,7 +157,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@rm -rf $(BUILD_DIR)/mosquitto*
 	@tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR)
 	@echo "Patching Mosquitto CMakeLists for GTest..."
-	@sed -i 's/find_package(GTest)/# find_package(GTest)/g' $(MOSQUITTO_SRC)/CMakeLists.txt || true
+	@find $(MOSQUITTO_SRC) -name "CMakeLists.txt" -exec sed -i '/find_package.*[Gg][Tt]est/s/^/#/' {} \;
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
