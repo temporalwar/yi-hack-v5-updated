@@ -128,7 +128,7 @@ tar -xjf arm-hisiv300-linux.tar.bz2 && rm arm-hisiv300-linux.tar.bz2
 
 # Install host build tools
 sudo apt update && sudo apt install build-essential ninja-build wget bzip2
-pip3 install meson==0.51.1
+pip3 install meson>=0.60.0
 
 # Build
 chmod +x build.sh && ./build.sh
