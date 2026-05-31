@@ -159,6 +159,7 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 	@echo "Patching Mosquitto CMakeLists..."
 	@find $(MOSQUITTO_SRC) -type f -iname "CMakeLists.txt" -exec sed -i '/[Ff][Ii][Nn][Dd]_[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*[Gg][Tt][Ee][Ss][Tt]/ s/^.*/# &/' {} \;
 	@sed -i '/add_subdirectory(test)/ s/^.*/# &/' $(MOSQUITTO_SRC)/CMakeLists.txt
+	@sed -i '/add_subdirectory(cpp)/ s/^.*/# &/' $(MOSQUITTO_SRC)/lib/CMakeLists.txt
 	@echo "Configuring Mosquitto..."
 	rm -rf $(MOSQUITTO_BUILD_DIR)
 	mkdir -p $(MOSQUITTO_BUILD_DIR)
@@ -179,7 +180,6 @@ $(STAGING_DIR)/usr/lib/libmosquitto.so.1:
 		-DWITH_DOCS=OFF \
 		-DWITH_TLS=ON \
 		-DWITH_TLS_PSK=ON \
-		-DWITH_EC=ON \
 		-DWITH_CLIENTS=OFF \
 		-DWITH_BROKER=OFF \
 		-DWITH_PLUGINS=OFF \
