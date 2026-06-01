@@ -103,7 +103,7 @@ cjson: $(STAGING_LIB)/libcjson.so
 $(STAGING_LIB)/libcjson.so:
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz ]; then echo " DL v$(CJSON_VER).tar.gz"; wget -q --show-progress -O $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz $(CJSON_URL); fi
 	@if [ ! -d $(CJSON_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/v$(CJSON_VER).tar.gz -C $(BUILD_DIR); fi
-	$(MAKE) -C $(CJSON_SRC) -j$(shell nproc) CC=$(CC)
+	$(MAKE) -C $(CJSON_SRC) CC=$(CC)
 	$(MAKE) -C $(CJSON_SRC) install PREFIX=$(STAGING_DIR)
 
 # 5. Mosquitto
