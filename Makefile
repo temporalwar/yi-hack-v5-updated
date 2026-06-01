@@ -70,7 +70,7 @@ openssl: $(STAGING_LIB)/libssl.so.3
 $(STAGING_LIB)/libssl.so.3:
 	@if [ ! -f $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VER).tar.gz ]; then echo " DL openssl-$(OPENSSL_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(OPENSSL_URL); fi
 	@if [ ! -d $(OPENSSL_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/openssl-$(OPENSSL_VER).tar.gz -C $(BUILD_DIR); fi
-	cd $(OPENSSL_SRC) && ./Configure linux-armv4 shared --cross-compile-prefix=$(CROSS_PREFIX) --prefix=$(STAGING_DIR) --openssldir=$(STAGING_DIR)/ssl
+	cd $(OPENSSL_SRC) && ./Configure linux-armv4 shared --cross-compile-prefix=$(CROSS_PREFIX) --prefix=$(STAGING_DIR) --openssldir=$(STAGING_DIR)/ssl no-async
 	$(MAKE) -C $(OPENSSL_SRC) -j$(shell nproc)
 	$(MAKE) -C $(OPENSSL_SRC) install_sw
 
