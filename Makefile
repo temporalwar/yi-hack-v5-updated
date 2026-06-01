@@ -113,7 +113,7 @@ mosquitto: $(STAGING_SBIN)/mosquitto
 $(STAGING_SBIN)/mosquitto: openssl
 	@if [ ! -f $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz ]; then echo " DL v$(MOSQUITTO_VER).tar.gz"; wget -q --show-progress -O $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz $(MOSQUITTO_URL); fi
 	@if [ ! -d $(MOSQUITTO_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/v$(MOSQUITTO_VER).tar.gz -C $(BUILD_DIR); fi
-	$(MAKE) -C $(MOSQUITTO_SRC) -j$(shell nproc) CC=$(CC) CXX=$(CXX) WITH_TLS=yes WITH_TLS_PSK=yes WITH_THREADING=no WITH_DOCS=no CFLAGS="$(COMMON_CFLAGS) -I$(STAGING_INC)" LDFLAGS="$(COMMON_LDFLAGS) -L$(STAGING_LIB)"
+	$(MAKE) -C $(MOSQUITTO_SRC) -j$(shell nproc) CC=$(CC) CXX=$(CXX) WITH_TLS=yes WITH_TLS_PSK=yes WITH_THREADING=no WITH_DOCS=no CFLAGS="$(COMMON_CFLAGS) -I$(STAGING_INC) -std=gnu99 -D_GNU_SOURCE" LDFLAGS="$(COMMON_LDFLAGS) -L$(STAGING_LIB)"
 	$(MAKE) -C $(MOSQUITTO_SRC) install DESTDIR=$(STAGING_DIR) prefix= WITH_DOCS=no
 
 # 6. Pure-FTPd
