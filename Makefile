@@ -81,7 +81,7 @@ curl: $(STAGING_LIB)/libcurl.so
 $(STAGING_LIB)/libcurl.so: openssl
 	@if [ ! -f $(DOWNLOAD_DIR)/curl-$(CURL_VER).tar.gz ]; then echo " DL curl-$(CURL_VER).tar.gz"; wget -q --show-progress -P $(DOWNLOAD_DIR) $(CURL_URL); fi
 	@if [ ! -d $(CURL_SRC) ]; then tar -xzf $(DOWNLOAD_DIR)/curl-$(CURL_VER).tar.gz -C $(BUILD_DIR); fi
-	cd $(CURL_SRC) && ./configure --host=$(HOST_TRIPLE) --prefix=$(STAGING_DIR) --with-ssl=$(STAGING_DIR) --disable-static --enable-shared
+	cd $(CURL_SRC) && ./configure --host=$(HOST_TRIPLE) --prefix=$(STAGING_DIR) --with-ssl=$(STAGING_DIR) --disable-static --enable-shared --without-libpsl
 	$(MAKE) -C $(CURL_SRC) -j$(shell nproc)
 	$(MAKE) -C $(CURL_SRC) install
 
